@@ -1,0 +1,33 @@
+# Core data science
+pandas
+numpy
+scipy
+scikit-learn
+
+# Visualization
+matplotlib
+seaborn
+plotly
+
+# Dashboard
+streamlit
+
+# Deep learning
+# Install PyTorch manually from https://pytorch.org/get-started/locally/
+# to match your CUDA version (CPU / CUDA 11.x / CUDA 12.x)
+torch
+torchvision
+torchaudio
+
+# NLP / Transformers
+transformers
+tokenizers
+
+# Jupyter
+jupyterlab
+ipywidgets
+
+# Utilities
+tqdm
+requests
+pyarrow

@@ -1,6 +1,38 @@
+# Virtual environment
 venv/
-data/
-models/
+
+# Python cache
 __pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Jupyter (root-level catch-all)
+.ipynb_checkpoints/
+
+# Model binaries (root-level catch-all)
 *.pt
-*.ipynb_checkpoints/
+*.pth
+*.pkl
+*.h5
+*.onnx
+*.joblib
+*.bin
+*.safetensors
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs & environment
+*.log
+logs/
+.env
+.env.*
+
+# Full dependency lock (machine-specific, not for sharing)
+requirements-lock.txt

@@ -1,0 +1,15 @@
+# Ignore all trained model artifacts
+*.pt
+*.pth
+*.pkl
+*.h5
+*.onnx
+*.joblib
+*.bin
+*.safetensors
+
+# Ignore TensorFlow SavedModel directories
+saved_model/
+
+# But always track this file so the folder stays in Git
+!.gitignore

@@ -1,0 +1,16 @@
+# Ignore all dataset and generated files inside this folder
+*.csv
+*.xlsx
+*.xls
+*.parquet
+*.json
+*.pkl
+
+# Ignore generated plots / images
+*.png
+*.jpg
+*.jpeg
+*.svg
+
+# But always track this file so the folder stays in Git
+!.gitignore

@@ -1,0 +1,8 @@
+# Jupyter auto-save / checkpoint directories
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# Exported notebook outputs
+*.html
+*.pdf
+*.py   # auto-exported scripts — remove this line if you want .py exports tracked
