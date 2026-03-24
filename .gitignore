@@ -1,38 +1,225 @@
-# Virtual environment
-venv/
+# ==============================================================================
+# CAN Bus IDS - Git Ignore Configuration
+# ==============================================================================
 
-# Python cache
+# ==============================================================================
+# PYTHON
+# ==============================================================================
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+*$py.class
 *.pyo
 *.pyd
 
-# Jupyter (root-level catch-all)
-.ipynb_checkpoints/
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
 
-# Model binaries (root-level catch-all)
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+pytest_cache/
+
+# mypy / type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+
+# ==============================================================================
+# JUPYTER NOTEBOOKS
+# ==============================================================================
+
+.ipynb_checkpoints/
+*.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# ==============================================================================
+# MACHINE LEARNING MODELS & DATA
+# ==============================================================================
+
+# Model weights (track via Git LFS or DVC instead)
 *.pt
 *.pth
 *.pkl
+*.pickle
 *.h5
+*.hdf5
 *.onnx
 *.joblib
 *.bin
 *.safetensors
+*.ckpt
 
-# IDE
+# Large datasets (track via Git LFS or DVC instead)
+*.csv
+*.parquet
+*.feather
+*.arrow
+
+# Exception: Keep specific config files
+!models/threshold.json
+!data/vocab.json
+
+# ==============================================================================
+# NODE.JS / REACT FRONTEND
+# ==============================================================================
+
+# Dependencies
+node_modules/
+frontend/node_modules/
+dashboard/node_modules/
+
+# Build outputs
+frontend/dist/
+frontend/build/
+dashboard/dist/
+dashboard/build/
+
+# Runtime data
+*.pid
+*.seed
+*.pid.lock
+
+# npm / yarn
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+.yarn/
+
+# eslint / prettier
+.eslintcache
+.prettiercache
+
+# ==============================================================================
+# IDE & EDITORS
+# ==============================================================================
+
+# Visual Studio Code
 .vscode/
+*.code-workspace
+
+# JetBrains (PyCharm, WebStorm, IntelliJ)
 .idea/
+*.iml
 
-# OS
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.#*
+
+# ==============================================================================
+# OPERATING SYSTEM
+# ==============================================================================
+
+# macOS
 .DS_Store
-Thumbs.db
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
 
-# Logs & environment
-*.log
-logs/
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+.directory
+.Trash-*
+
+# ==============================================================================
+# ENVIRONMENT & SECRETS
+# ==============================================================================
+
+# Environment variables
 .env
 .env.*
+.env.local
+.env.development
+.env.production
+!.env.example
 
-# Full dependency lock (machine-specific, not for sharing)
+# API keys / secrets
+secrets/
+*.pem
+*.key
+*.crt
+
+# ==============================================================================
+# LOGS & TEMPORARY FILES
+# ==============================================================================
+
+# Logs
+*.log
+logs/
+*.out
+*.err
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Lock files (machine-specific)
 requirements-lock.txt
+package-lock.json
+
+# ==============================================================================
+# PROJECT-SPECIFIC
+# ==============================================================================
+
+# API runtime log
+api_log.txt
+
+# Results (regeneratable via evaluation script)
+# results/predictions.csv
+# results/figures/
+
+# Claude Code artifacts
+.claude/
