@@ -23,8 +23,17 @@ class Settings(BaseSettings):
     MODEL_PATH: Path = Field(default=PROJECT_ROOT / "models" / "best_model.pt")
     VOCAB_PATH: Path = Field(default=PROJECT_ROOT / "data" / "vocab.json")
     THRESHOLD_PATH: Path = Field(default=PROJECT_ROOT / "models" / "threshold.json")
+    MULTICLASS_MODEL_PATH: Path = Field(default=PROJECT_ROOT / "models" / "multiclass_model.pkl")
+    MULTICLASS_VECTORIZER_PATH: Path = Field(default=PROJECT_ROOT / "models" / "vectorizer.pkl")
 
-    @field_validator("MODEL_PATH", "VOCAB_PATH", "THRESHOLD_PATH", mode="before")
+    @field_validator(
+        "MODEL_PATH",
+        "VOCAB_PATH",
+        "THRESHOLD_PATH",
+        "MULTICLASS_MODEL_PATH",
+        "MULTICLASS_VECTORIZER_PATH",
+        mode="before",
+    )
     @classmethod
     def resolve_project_relative_path(cls, value: str | Path) -> Path:
         path = Path(value).expanduser()

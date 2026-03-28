@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field, field_validator
 from transformers import DistilBertConfig, DistilBertForMaskedLM
 
 from backend.config import settings
+from src.multiclass_inference import predict_attack_type
 
 
 BASE_DIR = settings.PROJECT_ROOT
@@ -445,6 +446,17 @@ def get_next_demo_tokens() -> List[int]:
     return sampled.astype(np.int64).tolist()
 
 
+def decode_tokens_to_can_ids(tokens: Sequence[int]) -> List[str]:
+    reverse_vocab = {int(value): str(can_id) for can_id, value in runtime_state.vocab.items()}
+    decoded: List[str] = []
+
+    for token in tokens:
+        token_int = int(token)
+        decoded.append(reverse_vocab.get(token_int, format(token_int, "04x")))
+
+    return decoded
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     try:
@@ -640,10 +652,18 @@ async def ws_live(websocket: WebSocket) -> None:
             tokens = get_next_demo_tokens()
             unknown_count = int(np.sum(np.asarray(tokens) == UNK_ID))
             result = predict_from_tokens(tokens, unknown_count, return_details=False)
+
+            if result["is_attack"]:
+                raw_can_ids = decode_tokens_to_can_ids(tokens)
+                result["attack_type"] = predict_attack_type(tokens, raw_can_ids)
+            else:
+                result["attack_type"] = None
+
             stats_state.update(result)
 
             payload = {
                 "score": result["anomaly_score"],
+                "is_attack": result["is_attack"],
                 "label": result["label"],
                 "attack_type": result["attack_type"],
                 "confidence": result["confidence"],
