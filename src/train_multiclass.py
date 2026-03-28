@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from collections import Counter, deque
 from pathlib import Path
 from typing import Deque, Dict, Iterable, List, Sequence, Tuple
