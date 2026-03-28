@@ -9,7 +9,8 @@
   <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/PyTorch-2.x-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white" />
   <img src="https://img.shields.io/badge/HuggingFace-Transformers-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black" />
-  <img src="https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" />
+  <img src="https://img.shields.io/badge/FastAPI-Backend-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
+  <img src="https://img.shields.io/badge/React-Frontend-61DAFB?style=for-the-badge&logo=react&logoColor=0A192F" />
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" />
 </p>
 
@@ -88,7 +89,7 @@ Normal CAN Traffic → Hex IDs → Integer Tokens → Sequences (window=64)
 | **Deep Learning** | PyTorch, HuggingFace Transformers, DistilBERT |
 | **Data Science** | Pandas, NumPy, Scikit-learn, SciPy |
 | **Visualization** | Matplotlib, Seaborn, Plotly |
-| **Dashboard** | Streamlit (dark-mode, real-time) |
+| **Application Layer** | FastAPI backend + React frontend (Vite) |
 | **Notebook** | JupyterLab |
 | **Dataset** | [Car-Hacking Dataset](https://ocslab.hksecurity.net/Datasets/car-hacking-dataset) |
 
@@ -106,7 +107,7 @@ This project uses a **dual-machine workflow** to balance development speed with 
 |   - Data exploration         |      |   PyTorch CUDA (cu126)       |
 |   - Preprocessing            |      |                              |
 |   - Tokenization             |      |   - MLM Training (Batch 64)  |
-|   - Dashboard dev            |      |   - LR: 2e-5                 |
+|   - Backend/frontend dev     |      |   - LR: 2e-5                 |
 |   - Inference testing        |      |   - Full epoch training      |
 +------------------------------+      +------------------------------+
 ```
@@ -140,10 +141,16 @@ can_bus_ids_project/
 +-- src/                       <- Python source modules
 |   +-- .gitignore
 |
-+-- models/                    <- Trained model weights (git-ignored)
-|   +-- .gitignore
++-- backend/                   <- Production FastAPI backend
+|   +-- main.py
+|   +-- config.py
+|   +-- requirements.txt
 |
-+-- dashboard/                 <- Streamlit dashboard app
++-- frontend/                  <- React + TypeScript web client
+|   +-- src/
+|   +-- package.json
+|
++-- models/                    <- Trained model weights (git-ignored)
 |   +-- .gitignore
 |
 +-- venv/                      <- Virtual environment (git-ignored)
@@ -263,16 +270,19 @@ data/
 - Calculate the **99th-percentile threshold** from normal traffic losses
 - Sequences with loss > threshold → flagged as **anomalies**
 
-### Phase 6 — Streamlit Dashboard
+### Phase 6 — Production Runtime (FastAPI + React)
 
-- Real-time dark-mode dashboard
-- Plotly charts: anomaly score distributions, time-series views
-- Metric gauges: precision, recall, F1-score, detection rate
-- Alert system: flash warnings for detected intrusions
+- Backend API is served from `backend/main.py`
+- Frontend UI is the React app in `frontend/`
 
 ```bash
-cd dashboard
-streamlit run app.py
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+```
+
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
 ---

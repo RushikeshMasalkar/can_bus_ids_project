@@ -24,8 +24,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 from transformers import DistilBertConfig, DistilBertForMaskedLM
 
+from backend.config import settings
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+
+BASE_DIR = settings.PROJECT_ROOT
 DATA_DIR = BASE_DIR / "data"
 MODELS_DIR = BASE_DIR / "models"
 REPORTS_DIR = BASE_DIR / "reports"
@@ -33,9 +35,9 @@ REPORTS_DIR = BASE_DIR / "reports"
 # StaticFiles validates the directory when mounted, so create it at import time.
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
-VOCAB_PATH = DATA_DIR / "vocab.json"
-MODEL_PATH = MODELS_DIR / "best_model.pt"
-THRESHOLD_PATH = MODELS_DIR / "threshold.json"
+VOCAB_PATH = settings.VOCAB_PATH
+MODEL_PATH = settings.MODEL_PATH
+THRESHOLD_PATH = settings.THRESHOLD_PATH
 SEQUENCES_PATH = DATA_DIR / "sequences.pt"
 RF_CLASSIFIER_PATH = MODELS_DIR / "attack_classifier.pkl"
 RF_META_PATH = MODELS_DIR / "attack_classifier_meta.json"
@@ -448,6 +450,16 @@ async def lifespan(_: FastAPI):
     try:
         REPORTS_DIR.mkdir(parents=True, exist_ok=True)
         load_runtime_assets()
+    except FileNotFoundError as exc:
+        runtime_state.loaded = False
+        runtime_state.model = None
+        runtime_state.vocab = {}
+        runtime_state.threshold_data = {}
+        runtime_state.rf_classifier = None
+        runtime_state.rf_meta = {}
+        runtime_state.demo_sequences = None
+        runtime_state.demo_index = 0
+        print(f"Backend startup warning: {exc}")
     except Exception as exc:  # pragma: no cover - startup hard failure path
         raise RuntimeError(f"Backend startup failed: {exc}") from exc
 
