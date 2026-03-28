@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Reports &amp; Results | IDS.Sentinel</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Manrope:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-bright": "#f7f9fb",
+              "on-background": "#191c1e",
+              "on-tertiary": "#ffffff",
+              "on-secondary-fixed": "#001f28",
+              "on-primary-fixed": "#091d2e",
+              "tertiary-fixed": "#89f5e7",
+              "on-error": "#ffffff",
+              "on-tertiary-container": "#48b8ab",
+              "secondary-fixed": "#b7eaff",
+              "surface-container-highest": "#e0e3e5",
+              "inverse-on-surface": "#eff1f3",
+              "tertiary-container": "#00453f",
+              "surface-variant": "#e0e3e5",
+              "secondary": "#00677f",
+              "primary-fixed": "#d1e4fb",
+              "inverse-surface": "#2d3133",
+              "surface-container": "#eceef0",
+              "primary": "#162839",
+              "surface-tint": "#4e6073",
+              "surface-container-lowest": "#ffffff",
+              "surface-container-low": "#f2f4f6",
+              "surface-container-high": "#e6e8ea",
+              "tertiary-fixed-dim": "#6bd8cb",
+              "primary-container": "#2c3e50",
+              "on-surface-variant": "#43474c",
+              "on-primary-fixed-variant": "#36485b",
+              "on-secondary-container": "#005266",
+              "on-error-container": "#93000a",
+              "background": "#f7f9fb",
+              "on-surface": "#191c1e",
+              "tertiary": "#002d28",
+              "on-tertiary-fixed": "#00201d",
+              "on-primary": "#ffffff",
+              "secondary-fixed-dim": "#4cd6ff",
+              "on-primary-container": "#96a9be",
+              "on-secondary": "#ffffff",
+              "error-container": "#ffdad6",
+              "outline-variant": "#c4c6cd",
+              "on-secondary-fixed-variant": "#004e60",
+              "primary-fixed-dim": "#b5c8df",
+              "secondary-container": "#00ccf9",
+              "outline": "#74777d",
+              "on-tertiary-fixed-variant": "#005049",
+              "inverse-primary": "#b5c8df",
+              "surface-dim": "#d8dadc",
+              "error": "#ba1a1a",
+              "surface": "#f7f9fb"
+            },
+            fontFamily: {
+              "headline": ["Space Grotesk"],
+              "body": ["Manrope"],
+              "label": ["Manrope"],
+              "mono": ["JetBrains Mono"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(224, 227, 229, 0.7);
+            backdrop-filter: blur(24px);
+        }
+        .asymmetric-grid {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 2rem;
+        }
+        @media (max-width: 1024px) {
+            .asymmetric-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 bg-surface-container-low">
+<div class="flex justify-between items-center px-6 h-16 w-full max-w-[1440px] mx-auto">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold text-primary tracking-tighter font-headline">IDS.Sentinel</span>
+<nav class="hidden md:flex gap-6">
+<a class="text-on-surface-variant hover:text-primary transition-colors font-medium" href="#">Home</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-medium" href="#">About</a>
+<a class="text-primary font-bold border-b-2 border-primary pb-1" href="#">Reports</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-surface-container-highest rounded-full transition-all">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="p-2 hover:bg-surface-container-highest rounded-full transition-all">
+<span class="material-symbols-outlined">dark_mode</span>
+</button>
+<button class="bg-primary text-on-primary px-4 py-2 rounded-xl text-sm font-bold active:scale-95 transition-transform">
+                    Live Dashboard
+                </button>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 bg-surface-container-low flex flex-col p-4 gap-2 hidden lg:flex">
+<div class="mb-6 px-2">
+<h2 class="font-headline font-bold text-lg text-primary">CAN Bus IDS</h2>
+<p class="text-xs text-on-surface-variant">Precision Sentinel</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high hover:translate-x-1 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium text-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high hover:translate-x-1 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+<span class="font-medium text-sm">Model &amp; Pipeline</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high hover:translate-x-1 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">integration_instructions</span>
+<span class="font-medium text-sm">API &amp; Integration</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 bg-surface-container-lowest text-primary rounded-lg shadow-sm font-bold" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-medium text-sm">Reports</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high hover:translate-x-1 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">verified_user</span>
+<span class="font-medium text-sm">Security</span>
+</a>
+</nav>
+<div class="mt-auto pt-4 space-y-1">
+<button class="w-full bg-primary-container text-on-primary-container py-3 rounded-xl font-bold mb-4 active:scale-95 transition-transform">
+                Deploy Model
+            </button>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-medium text-sm">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-medium text-sm">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="lg:ml-64 pt-24 px-8 pb-12 min-h-screen">
+<div class="max-w-[1200px] mx-auto">
+<!-- Header Section -->
+<header class="mb-12">
+<div class="flex items-baseline gap-4 mb-2">
+<h1 class="text-4xl font-bold font-headline tracking-tight text-primary">Analytical Intelligence Report</h1>
+<span class="text-secondary font-mono text-sm px-2 py-0.5 bg-secondary-fixed/30 rounded">v1.2.0-STABLE</span>
+</div>
+<p class="text-on-surface-variant max-w-2xl">
+                    Comprehensive performance evaluation of the Transformer-based Intrusion Detection System optimized for CAN Bus protocol forensics. Data source: Real-time Automotive Traffic Log 402-B.
+                </p>
+</header>
+<!-- Metrics Bento Grid -->
+<section class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-12">
+<div class="bg-surface-container-lowest p-6 rounded-2xl flex flex-col justify-between">
+<span class="text-xs uppercase tracking-wider text-on-surface-variant font-bold">Accuracy</span>
+<span class="text-4xl font-headline font-bold text-primary mt-4">97.12<span class="text-lg font-normal">%</span></span>
+<div class="mt-4 flex items-center text-tertiary-container font-mono text-xs">
+<span class="material-symbols-outlined text-sm mr-1">trending_up</span> +0.4% vs baseline
+                    </div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-2xl flex flex-col justify-between">
+<span class="text-xs uppercase tracking-wider text-on-surface-variant font-bold">Precision</span>
+<span class="text-4xl font-headline font-bold text-primary mt-4">97.53<span class="text-lg font-normal">%</span></span>
+<div class="mt-4 flex items-center text-on-surface-variant font-mono text-xs">
+                        STABLE TARGET
+                    </div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-2xl flex flex-col justify-between">
+<span class="text-xs uppercase tracking-wider text-on-surface-variant font-bold">Recall</span>
+<span class="text-4xl font-headline font-bold text-primary mt-4">92.72<span class="text-lg font-normal">%</span></span>
+<div class="mt-4 flex items-center text-error font-mono text-xs">
+<span class="material-symbols-outlined text-sm mr-1">warning</span> -1.2% variance
+                    </div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-2xl flex flex-col justify-between border-l-4 border-secondary">
+<span class="text-xs uppercase tracking-wider text-on-surface-variant font-bold">F1 Score</span>
+<span class="text-4xl font-headline font-bold text-primary mt-4">95.06<span class="text-lg font-normal">%</span></span>
+<div class="mt-4 flex items-center text-on-surface-variant font-mono text-xs">
+                        WEIGHTED AVG
+                    </div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-2xl flex flex-col justify-between">
+<span class="text-xs uppercase tracking-wider text-on-surface-variant font-bold">Specificity</span>
+<span class="text-4xl font-headline font-bold text-primary mt-4">98.99<span class="text-lg font-normal">%</span></span>
+<div class="mt-4 flex items-center text-tertiary-container font-mono text-xs">
+<span class="material-symbols-outlined text-sm mr-1">verified</span> OPTIMAL
+                    </div>
+</div>
+</section>
+<div class="asymmetric-grid mb-12">
+<!-- Main Analytics Section -->
+<div class="space-y-8">
+<!-- Confusion Matrix -->
+<div class="bg-surface-container-low p-8 rounded-3xl">
+<h3 class="font-headline font-bold text-xl mb-6 flex items-center gap-2">
+                            Confusion Matrix Analysis
+                            <span class="material-symbols-outlined text-on-surface-variant">info</span>
+</h3>
+<div class="grid grid-cols-5 gap-2 font-mono text-xs">
+<div class="col-start-2 text-center text-on-surface-variant">DoS</div>
+<div class="text-center text-on-surface-variant">Fuzzy</div>
+<div class="text-center text-on-surface-variant">Gear</div>
+<div class="text-center text-on-surface-variant">RPM</div>
+<div class="text-right pr-2 text-on-surface-variant py-8">DoS</div>
+<div class="bg-primary text-on-primary flex items-center justify-center rounded-lg font-bold text-lg">992</div>
+<div class="bg-surface-container-highest flex items-center justify-center rounded-lg">4</div>
+<div class="bg-surface-container-high flex items-center justify-center rounded-lg">1</div>
+<div class="bg-surface-container-high flex items-center justify-center rounded-lg">3</div>
+<div class="text-right pr-2 text-on-surface-variant py-8">Fuzzy</div>
+<div class="bg-surface-container-highest flex items-center justify-center rounded-lg">12</div>
+<div class="bg-primary/80 text-on-primary flex items-center justify-center rounded-lg font-bold text-lg">968</div>
+<div class="bg-surface-container-highest flex items-center justify-center rounded-lg">18</div>
+<div class="bg-surface-container-high flex items-center justify-center rounded-lg">2</div>
+<div class="text-right pr-2 text-on-surface-variant py-8">Gear</div>
+<div class="bg-surface-container-high flex items-center justify-center rounded-lg">0</div>
+<div class="bg-surface-container-highest flex items-center justify-center rounded-lg">7</div>
+<div class="bg-primary/90 text-on-primary flex items-center justify-center rounded-lg font-bold text-lg">981</div>
+<div class="bg-surface-container-highest flex items-center justify-center rounded-lg">12</div>
+<div class="text-right pr-2 text-on-surface-variant py-8">RPM</div>
+<div class="bg-surface-container-high flex items-center justify-center rounded-lg">5</div>
+<div class="bg-surface-container-high flex items-center justify-center rounded-lg">2</div>
+<div class="bg-surface-container-highest flex items-center justify-center rounded-lg">9</div>
+<div class="bg-primary/85 text-on-primary flex items-center justify-center rounded-lg font-bold text-lg">984</div>
+</div>
+</div>
+<!-- Performance Curves -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/10">
+<h4 class="font-bold text-sm mb-6 flex justify-between items-center">
+                                ROC Curve
+                                <span class="font-mono text-[10px] text-on-surface-variant">AUC: 0.988</span>
+</h4>
+<div class="h-48 w-full flex items-end gap-1 px-2 relative">
+<div class="absolute inset-0 border-b border-l border-outline-variant/30"></div>
+<!-- Mock ROC Curve SVG -->
+<svg class="w-full h-full text-secondary" preserveaspectratio="none" viewbox="0 0 100 100">
+<path d="M0,100 Q10,10 100,0" fill="none" stroke="currentColor" stroke-width="2"></path>
+<line opacity="0.5" stroke="currentColor" stroke-dasharray="2,2" stroke-width="0.5" x1="0" x2="100" y1="100" y2="0"></line>
+</svg>
+</div>
+<div class="flex justify-between mt-2 text-[10px] font-mono text-on-surface-variant">
+<span>FPR</span>
+<span>TPR</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/10">
+<h4 class="font-bold text-sm mb-6 flex justify-between items-center">
+                                Precision-Recall Curve
+                                <span class="font-mono text-[10px] text-on-surface-variant">mAP: 0.942</span>
+</h4>
+<div class="h-48 w-full flex items-end gap-1 px-2 relative">
+<div class="absolute inset-0 border-b border-l border-outline-variant/30"></div>
+<svg class="w-full h-full text-primary-container" preserveaspectratio="none" viewbox="0 0 100 100">
+<path d="M0,5 Q60,10 100,100" fill="none" stroke="currentColor" stroke-width="2"></path>
+</svg>
+</div>
+<div class="flex justify-between mt-2 text-[10px] font-mono text-on-surface-variant">
+<span>Recall</span>
+<span>Precision</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Log & Download -->
+<div class="space-y-6">
+<!-- Experiment Log -->
+<div class="bg-surface-container-low p-6 rounded-3xl">
+<h3 class="font-headline font-bold text-lg mb-4">Experiment Log</h3>
+<div class="space-y-3">
+<details class="group bg-surface-container-lowest rounded-xl overflow-hidden" open="">
+<summary class="list-none p-4 flex justify-between items-center cursor-pointer hover:bg-surface-container-high transition-colors">
+<span class="font-bold text-sm">v1.2.0 - Transformer Update</span>
+<span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="px-4 pb-4 text-xs text-on-surface-variant leading-relaxed">
+                                    Integrated Attention mechanism with 8 heads. Optimized for latency on embedded NVIDIA Orin hardware. 
+                                    <div class="mt-2 font-mono text-secondary">Latency: 12ms per frame</div>
+</div>
+</details>
+<details class="group bg-surface-container-lowest rounded-xl overflow-hidden">
+<summary class="list-none p-4 flex justify-between items-center cursor-pointer hover:bg-surface-container-high transition-colors">
+<span class="font-bold text-sm text-on-surface-variant">v1.1.5 - Random Forest</span>
+<span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="px-4 pb-4 text-xs text-on-surface-variant">
+                                    Baseline testing using ensemble methods. High performance on DoS attacks but struggled with Gear Spoofing.
+                                </div>
+</details>
+<details class="group bg-surface-container-lowest rounded-xl overflow-hidden">
+<summary class="list-none p-4 flex justify-between items-center cursor-pointer hover:bg-surface-container-high transition-colors">
+<span class="font-bold text-sm text-on-surface-variant">v1.0.2 - Initial Deploy</span>
+<span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="px-4 pb-4 text-xs text-on-surface-variant">
+                                    Legacy CNN approach. Validated against Car-Hacking Dataset.
+                                </div>
+</details>
+</div>
+</div>
+<!-- Download Center -->
+<div class="bg-primary p-6 rounded-3xl text-on-primary">
+<h3 class="font-headline font-bold text-lg mb-4">Download Center</h3>
+<div class="space-y-2">
+<button class="w-full flex items-center justify-between p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined">picture_as_pdf</span>
+<span class="text-sm font-medium">Performance Report (PDF)</span>
+</div>
+<span class="material-symbols-outlined text-sm">download</span>
+</button>
+<button class="w-full flex items-center justify-between p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">data_object</span>
+<span class="text-sm font-medium">Metrics Data (JSON)</span>
+</div>
+<span class="material-symbols-outlined text-sm">download</span>
+</button>
+<button class="w-full flex items-center justify-between p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-sm">folder_zip</span>
+<span class="text-sm font-medium">Analysis Figures (ZIP)</span>
+</div>
+<span class="material-symbols-outlined text-sm">download</span>
+</button>
+</div>
+</div>
+<!-- Image Section -->
+<div class="rounded-3xl overflow-hidden aspect-video relative group">
+<img alt="Server Rack" class="w-full h-full object-cover grayscale brightness-50 group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700" data-alt="high-tech secure server room with glowing blue status lights on racks in a clean modern data center facility" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnQ2zJj2X5TMsCK5vpIiN-o9YrCwtWVZJUrfkKa2DvJMN08hau2FTNRXnXLNA48W20vR2nNyqE1y4eyCslYoslIkMo8nXVY3aiZk5nILx9W4kOfa6w-BMVTsFoZRURvnQBd-6LXbON1x3dswpVPnXOyfhrxNlIFwGMVy8JWAplrDHya6UmQVn9ForkQfz8c4KgrRR3k2mooOq6qnjXxTQzrCpuJ0ltD1Esi7k-EbQ_EVA0CR1CIo61mWNyBlRF4vpFRsrvUtI_jgM"/>
+<div class="absolute inset-0 bg-gradient-to-t from-primary/80 to-transparent p-6 flex flex-col justify-end">
+<span class="text-[10px] font-bold tracking-[0.2em] text-cyan-400 uppercase">Hardware Node</span>
+<p class="text-xs text-white/80 font-mono">Sentinal-Alpha-09 // Active</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full bg-surface-container-low border-t-0 mt-auto">
+<div class="flex flex-col md:flex-row justify-between items-center px-8 py-12 w-full max-w-[1440px] mx-auto">
+<div class="mb-6 md:mb-0">
+<span class="font-headline font-bold text-primary tracking-tighter text-lg">IDS.Sentinel</span>
+<p class="font-manrope text-xs text-on-surface-variant mt-2">© 2024 IDS.Sentinel Automotive Cyber-Intelligence</p>
+</div>
+<div class="flex gap-8">
+<a class="font-manrope text-xs text-on-surface-variant hover:text-primary transition-colors" href="#">Mission</a>
+<a class="font-manrope text-xs text-on-surface-variant hover:text-primary transition-colors" href="#">Tech Stack</a>
+<a class="font-manrope text-xs text-on-surface-variant hover:text-primary transition-colors" href="#">Documentation</a>
+<a class="font-manrope text-xs text-on-surface-variant hover:text-primary transition-colors" href="#">Contact</a>
+</div>
+</div>
+</footer>
+</body></html>

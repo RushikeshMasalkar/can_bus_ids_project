@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Model &amp; Pipeline | IDS.Sentinel</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Manrope:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-bright": "#f7f9fb",
+              "on-background": "#191c1e",
+              "on-tertiary": "#ffffff",
+              "on-secondary-fixed": "#001f28",
+              "on-primary-fixed": "#091d2e",
+              "tertiary-fixed": "#89f5e7",
+              "on-error": "#ffffff",
+              "on-tertiary-container": "#48b8ab",
+              "secondary-fixed": "#b7eaff",
+              "surface-container-highest": "#e0e3e5",
+              "inverse-on-surface": "#eff1f3",
+              "tertiary-container": "#00453f",
+              "surface-variant": "#e0e3e5",
+              "secondary": "#00677f",
+              "primary-fixed": "#d1e4fb",
+              "inverse-surface": "#2d3133",
+              "surface-container": "#eceef0",
+              "primary": "#162839",
+              "surface-tint": "#4e6073",
+              "surface-container-lowest": "#ffffff",
+              "surface-container-low": "#f2f4f6",
+              "surface-container-high": "#e6e8ea",
+              "tertiary-fixed-dim": "#6bd8cb",
+              "primary-container": "#2c3e50",
+              "on-surface-variant": "#43474c",
+              "on-primary-fixed-variant": "#36485b",
+              "on-secondary-container": "#005266",
+              "on-error-container": "#93000a",
+              "background": "#f7f9fb",
+              "on-surface": "#191c1e",
+              "tertiary": "#002d28",
+              "on-tertiary-fixed": "#00201d",
+              "on-primary": "#ffffff",
+              "secondary-fixed-dim": "#4cd6ff",
+              "on-primary-container": "#96a9be",
+              "on-secondary": "#ffffff",
+              "error-container": "#ffdad6",
+              "outline-variant": "#c4c6cd",
+              "on-secondary-fixed-variant": "#004e60",
+              "primary-fixed-dim": "#b5c8df",
+              "secondary-container": "#00ccf9",
+              "outline": "#74777d",
+              "on-tertiary-fixed-variant": "#005049",
+              "inverse-primary": "#b5c8df",
+              "surface-dim": "#d8dadc",
+              "error": "#ba1a1a",
+              "surface": "#f7f9fb"
+            },
+            fontFamily: {
+              "headline": ["Space Grotesk"],
+              "body": ["Manrope"],
+              "label": ["JetBrains Mono"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(224, 227, 229, 0.7);
+            backdrop-filter: blur(24px);
+        }
+        .metallic-gradient {
+            background: linear-gradient(135deg, #162839 0%, #2c3e50 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-surface dark:bg-slate-900 h-16 border-b-0 shadow-none">
+<div class="flex justify-between items-center px-6 h-16 w-full max-w-[1440px] mx-auto">
+<div class="flex items-center gap-8">
+<span class="font-headline font-bold text-xl text-primary dark:text-white tracking-tighter">IDS.Sentinel</span>
+<div class="hidden md:flex gap-6">
+<a class="text-on-surface-variant dark:text-slate-400 hover:text-primary dark:hover:text-cyan-300 transition-colors font-manrope text-sm" href="#">Home</a>
+<a class="text-on-surface-variant dark:text-slate-400 hover:text-primary dark:hover:text-cyan-300 transition-colors font-manrope text-sm" href="#">About</a>
+<a class="text-on-surface-variant dark:text-slate-400 hover:text-primary dark:hover:text-cyan-300 transition-colors font-manrope text-sm" href="#">Reports</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:bg-surface-container-highest p-2 rounded-full transition-all">search</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:bg-surface-container-highest p-2 rounded-full transition-all">dark_mode</span>
+<button class="metallic-gradient text-on-primary px-4 py-2 rounded-xl text-sm font-medium transition-transform active:scale-95">Live Dashboard</button>
+</div>
+</div>
+</nav>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 bg-surface-container-low dark:bg-slate-900 flex flex-col p-4 gap-2 z-40">
+<div class="mb-6 px-2">
+<h2 class="font-headline font-bold text-lg text-primary dark:text-white">CAN Bus IDS</h2>
+<p class="text-xs text-on-surface-variant opacity-70">Precision Sentinel</p>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-slate-400 hover:bg-surface-container-high transition-transform duration-200 hover:translate-x-1 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined">dashboard</span> Dashboard
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 bg-surface-container-lowest dark:bg-slate-800 text-primary dark:text-cyan-400 rounded-lg shadow-sm font-bold text-sm" href="#">
+<span class="material-symbols-outlined">account_tree</span> Model &amp; Pipeline
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-slate-400 hover:bg-surface-container-high transition-transform duration-200 hover:translate-x-1 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined">integration_instructions</span> API &amp; Integration
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-slate-400 hover:bg-surface-container-high transition-transform duration-200 hover:translate-x-1 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined">analytics</span> Reports
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-slate-400 hover:bg-surface-container-high transition-transform duration-200 hover:translate-x-1 rounded-lg text-sm font-medium" href="#">
+<span class="material-symbols-outlined">verified_user</span> Security
+            </a>
+</nav>
+<div class="mt-auto pt-4 border-t border-outline-variant/10 flex flex-col gap-1">
+<button class="metallic-gradient text-on-primary w-full py-2.5 rounded-xl text-sm font-bold mb-4">Deploy Model</button>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant text-sm" href="#"><span class="material-symbols-outlined">settings</span> Settings</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant text-sm" href="#"><span class="material-symbols-outlined">help</span> Support</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="ml-64 mt-16 p-8 min-h-screen">
+<header class="mb-12 max-w-4xl">
+<h1 class="font-headline text-4xl font-bold tracking-tight text-primary mb-2">Model &amp; Pipeline Architecture</h1>
+<p class="text-on-surface-variant text-lg">Detailed forensic visualization of the IDS Sentinel inference flow and artifact lineage.</p>
+</header>
+<!-- Pipeline Flow Visual (Bento-style horizontal) -->
+<section class="mb-16">
+<div class="flex flex-col gap-6">
+<div class="flex items-center justify-between px-4 mb-2">
+<h3 class="font-headline font-bold text-xl">Inference Pipeline Flow</h3>
+<span class="bg-tertiary-container text-tertiary-fixed-dim px-3 py-1 rounded-full text-xs font-label">STATUS: ACTIVE</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+<!-- Step 1 -->
+<div class="bg-surface-container-low p-6 rounded-xl flex flex-col items-center text-center relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-1 h-full bg-secondary"></div>
+<span class="material-symbols-outlined text-secondary text-3xl mb-3">settings_input_component</span>
+<h4 class="font-headline font-bold text-sm mb-1">Data Preprocessing</h4>
+<p class="text-xs text-on-surface-variant">CAN frame normalization</p>
+</div>
+<!-- Step 2 -->
+<div class="bg-surface-container-low p-6 rounded-xl flex flex-col items-center text-center relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-secondary"></div>
+<span class="material-symbols-outlined text-secondary text-3xl mb-3">view_column</span>
+<h4 class="font-headline font-bold text-sm mb-1">Tokenization</h4>
+<p class="text-xs text-on-surface-variant">Window: <span class="font-label">64</span> sequence</p>
+</div>
+<!-- Step 3 (Stage 1) -->
+<div class="bg-primary-container p-6 rounded-xl flex flex-col items-center text-center text-on-primary-container relative">
+<div class="absolute -top-2 -right-2 bg-secondary-container text-on-secondary-container text-[10px] px-2 py-0.5 rounded-full font-bold">STAGE 1</div>
+<span class="material-symbols-outlined text-secondary-container text-3xl mb-3">psychology</span>
+<h4 class="font-headline font-bold text-sm mb-1">Scoring Engine</h4>
+<p class="text-xs opacity-80">Anomaly Probability</p>
+</div>
+<!-- Step 4 -->
+<div class="bg-surface-container-low p-6 rounded-xl flex flex-col items-center text-center relative">
+<div class="absolute top-1/2 -left-2 transform -translate-y-1/2 flex items-center gap-1 opacity-20">
+<span class="material-symbols-outlined text-xs">arrow_forward</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-3xl mb-3">door_front</span>
+<h4 class="font-headline font-bold text-sm mb-1">Threshold Gate</h4>
+<p class="text-xs text-on-surface-variant">Conditional logic</p>
+</div>
+<!-- Step 5 (Stage 2) -->
+<div class="bg-primary p-6 rounded-xl flex flex-col items-center text-center text-on-primary relative">
+<div class="absolute -top-2 -right-2 bg-secondary-container text-on-secondary-container text-[10px] px-2 py-0.5 rounded-full font-bold">STAGE 2</div>
+<span class="material-symbols-outlined text-secondary-fixed-dim text-3xl mb-3">hub</span>
+<h4 class="font-headline font-bold text-sm mb-1 text-white">Classifier</h4>
+<p class="text-xs opacity-70">Multiclass Identification</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Model Detail Cards -->
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+<!-- Stage 1 Card -->
+<div class="bg-surface-container-lowest p-8 rounded-xl flex flex-col gap-6 relative overflow-hidden group">
+<div class="flex justify-between items-start">
+<div>
+<div class="text-secondary font-label text-xs tracking-widest mb-2 uppercase">Core Scoring Unit</div>
+<h3 class="font-headline text-2xl font-bold text-primary">DistilBERT Anomaly Scorer</h3>
+</div>
+<span class="material-symbols-outlined text-4xl text-primary/10 group-hover:text-primary/20 transition-colors">memory</span>
+</div>
+<div class="space-y-4">
+<p class="text-on-surface-variant leading-relaxed">A specialized transformer-based architecture optimized for sequential automotive bus protocols. It monitors the statistical deviation of message arrivals.</p>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container-low p-3 rounded-lg">
+<div class="text-[10px] font-label text-on-surface-variant mb-1">ARCH</div>
+<div class="text-sm font-bold">Transformer-based</div>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg">
+<div class="text-[10px] font-label text-on-surface-variant mb-1">TRAINING</div>
+<div class="text-sm font-bold">Masked Language Modeling</div>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg">
+<div class="text-[10px] font-label text-on-surface-variant mb-1">INPUT</div>
+<div class="text-sm font-bold">64-ID sequence window</div>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg">
+<div class="text-[10px] font-label text-on-surface-variant mb-1">LATENCY</div>
+<div class="text-sm font-bold">&lt; 12ms / inference</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Stage 2 Card -->
+<div class="bg-surface-container-lowest p-8 rounded-xl flex flex-col gap-6 relative overflow-hidden group">
+<div class="flex justify-between items-start">
+<div>
+<div class="text-secondary font-label text-xs tracking-widest mb-2 uppercase">Identification Unit</div>
+<h3 class="font-headline text-2xl font-bold text-primary">Random Forest Classifier</h3>
+</div>
+<span class="material-symbols-outlined text-4xl text-primary/10 group-hover:text-primary/20 transition-colors">account_tree</span>
+</div>
+<div class="space-y-4">
+<p class="text-on-surface-variant leading-relaxed">The secondary stage triggered by high anomaly scores. It provides high-granularity classification of the specific attack vector detected.</p>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container-low p-3 rounded-lg">
+<div class="text-[10px] font-label text-on-surface-variant mb-1">FEATURES</div>
+<div class="text-sm font-bold">TF-IDF + Numeric Seq</div>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg">
+<div class="text-[10px] font-label text-on-surface-variant mb-1">OUTPUT</div>
+<div class="text-sm font-bold">Multiclass (4 types)</div>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg">
+<div class="text-[10px] font-label text-on-surface-variant mb-1">ESTIMATORS</div>
+<div class="text-sm font-bold">128 Decision Trees</div>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg">
+<div class="text-[10px] font-label text-on-surface-variant mb-1">ACCURACY</div>
+<div class="text-sm font-bold">99.2% F1-Score</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Decision Logic Explainer -->
+<section class="mb-16 bg-surface-container-low p-10 rounded-2xl border border-outline-variant/10">
+<h3 class="font-headline font-bold text-2xl mb-8 flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary">alt_route</span> Decision Logic
+            </h3>
+<div class="flex flex-col md:flex-row items-center justify-between gap-8">
+<div class="flex-1 space-y-4">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white font-label">S1</div>
+<div class="flex-1 p-4 bg-surface-container-lowest rounded-xl">
+<span class="text-xs font-label opacity-60">DISTILBERT SCORE (ρ)</span>
+<div class="font-bold">ρ = 0.88 (Potential Intrusion)</div>
+</div>
+</div>
+<div class="flex justify-center h-12">
+<div class="w-px bg-outline-variant border-l border-dashed border-outline"></div>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full border-2 border-secondary flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">priority_high</span>
+</div>
+<div class="flex-1 p-4 bg-secondary-container rounded-xl">
+<span class="text-xs font-label text-on-secondary-container/60">THRESHOLD CHECK (τ)</span>
+<div class="font-bold text-on-secondary-container">If ρ &gt; 0.75 → Trigger Stage 2</div>
+</div>
+</div>
+</div>
+<div class="hidden md:block">
+<span class="material-symbols-outlined text-5xl text-outline-variant">trending_flat</span>
+</div>
+<div class="flex-1 space-y-4">
+<div class="bg-surface-container-lowest p-6 rounded-2xl border-l-4 border-error shadow-sm">
+<h4 class="font-headline font-bold text-sm mb-4">Stage 2: Threat Analysis</h4>
+<div class="space-y-2">
+<div class="flex justify-between items-center text-xs">
+<span>DoS Attack</span>
+<span class="font-label text-error font-bold">88%</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-error h-full" style="width: 88%"></div>
+</div>
+<div class="flex justify-between items-center text-xs opacity-50">
+<span>Replay Attack</span>
+<span class="font-label">7%</span>
+</div>
+<div class="flex justify-between items-center text-xs opacity-50">
+<span>Fuzzing</span>
+<span class="font-label">5%</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Artifact Registry Section -->
+<section class="mb-16">
+<h3 class="font-headline font-bold text-2xl mb-8">Artifact Registry</h3>
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+<div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-3 group hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-secondary">book_4</span>
+<div>
+<h5 class="text-sm font-bold">Vocabulary</h5>
+<p class="text-[10px] font-label text-on-surface-variant">HEX_CORPUS_V3.JSON</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-3 group hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-secondary">layers</span>
+<div>
+<h5 class="text-sm font-bold">Sequence Tensors</h5>
+<p class="text-[10px] font-label text-on-surface-variant">TENSOR_BUFF_64.NPZ</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-3 group hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-secondary">database</span>
+<div>
+<h5 class="text-sm font-bold">Model Weights</h5>
+<p class="text-[10px] font-label text-on-surface-variant">IDS_BERT_CORE.PT</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-3 group hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-secondary">tune</span>
+<div>
+<h5 class="text-sm font-bold">Threshold Config</h5>
+<p class="text-[10px] font-label text-on-surface-variant">CONFIG_PRODUCTION.YAML</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl flex flex-col gap-3 group hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-secondary">data_object</span>
+<div>
+<h5 class="text-sm font-bold">Vectorizer</h5>
+<p class="text-[10px] font-label text-on-surface-variant">TFIDF_CAN_MAP.PKL</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Training Lifecycle -->
+<section class="mb-16">
+<h3 class="font-headline font-bold text-2xl mb-10">Training Lifecycle</h3>
+<div class="relative">
+<div class="absolute top-1/2 left-0 w-full h-0.5 bg-outline-variant -translate-y-1/2 hidden md:block"></div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8 relative z-10">
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold mb-4">1</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl text-center w-full">
+<h6 class="font-bold text-sm mb-1">Data Collection</h6>
+<p class="text-xs text-on-surface-variant">Logging RAW CAN Bus telemetry</p>
+</div>
+</div>
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold mb-4">2</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl text-center w-full">
+<h6 class="font-bold text-sm mb-1">Offline Training</h6>
+<p class="text-xs text-on-surface-variant">MLM pre-training + classification tuning</p>
+</div>
+</div>
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold mb-4">3</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl text-center w-full">
+<h6 class="font-bold text-sm mb-1">Edge Quantization</h6>
+<p class="text-xs text-on-surface-variant">Optimization for vehicle ECUs</p>
+</div>
+</div>
+<div class="flex flex-col items-center">
+<div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold mb-4">
+<span class="material-symbols-outlined text-lg">check</span>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl text-center w-full border border-secondary-container">
+<h6 class="font-bold text-sm mb-1">Deployment</h6>
+<p class="text-xs text-on-surface-variant">OTA rollout to Sentinel fleet</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-low dark:bg-slate-950 w-full mt-auto">
+<div class="flex flex-col md:flex-row justify-between items-center px-8 py-12 w-full max-w-[1440px] mx-auto gap-8">
+<div class="flex flex-col gap-2">
+<span class="font-headline font-bold text-primary dark:text-white text-lg">IDS.Sentinel</span>
+<p class="font-manrope text-xs text-on-surface-variant max-w-xs">© 2024 IDS.Sentinel Automotive Cyber-Intelligence. Advanced protection for the modern vehicle nervous system.</p>
+</div>
+<div class="flex gap-8">
+<a class="font-manrope text-xs text-on-surface-variant dark:text-slate-500 hover:text-primary dark:hover:text-cyan-300 transition-colors" href="#">Mission</a>
+<a class="font-manrope text-xs text-on-surface-variant dark:text-slate-500 hover:text-primary dark:hover:text-cyan-300 transition-colors" href="#">Tech Stack</a>
+<a class="font-manrope text-xs text-on-surface-variant dark:text-slate-500 hover:text-primary dark:hover:text-cyan-300 transition-colors underline text-primary dark:text-cyan-400" href="#">Documentation</a>
+<a class="font-manrope text-xs text-on-surface-variant dark:text-slate-500 hover:text-primary dark:hover:text-cyan-300 transition-colors" href="#">Contact</a>
+</div>
+</div>
+</footer>
+</body></html>

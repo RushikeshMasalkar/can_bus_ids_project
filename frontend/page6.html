@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Security &amp; Privacy | IDS.Sentinel</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Manrope:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-bright": "#f7f9fb",
+              "on-background": "#191c1e",
+              "on-tertiary": "#ffffff",
+              "on-secondary-fixed": "#001f28",
+              "on-primary-fixed": "#091d2e",
+              "tertiary-fixed": "#89f5e7",
+              "on-error": "#ffffff",
+              "on-tertiary-container": "#48b8ab",
+              "secondary-fixed": "#b7eaff",
+              "surface-container-highest": "#e0e3e5",
+              "inverse-on-surface": "#eff1f3",
+              "tertiary-container": "#00453f",
+              "surface-variant": "#e0e3e5",
+              "secondary": "#00677f",
+              "primary-fixed": "#d1e4fb",
+              "inverse-surface": "#2d3133",
+              "surface-container": "#eceef0",
+              "primary": "#162839",
+              "surface-tint": "#4e6073",
+              "surface-container-lowest": "#ffffff",
+              "surface-container-low": "#f2f4f6",
+              "surface-container-high": "#e6e8ea",
+              "tertiary-fixed-dim": "#6bd8cb",
+              "primary-container": "#2c3e50",
+              "on-surface-variant": "#43474c",
+              "on-primary-fixed-variant": "#36485b",
+              "on-secondary-container": "#005266",
+              "on-error-container": "#93000a",
+              "background": "#f7f9fb",
+              "on-surface": "#191c1e",
+              "tertiary": "#002d28",
+              "on-tertiary-fixed": "#00201d",
+              "on-primary": "#ffffff",
+              "secondary-fixed-dim": "#4cd6ff",
+              "on-primary-container": "#96a9be",
+              "on-secondary": "#ffffff",
+              "error-container": "#ffdad6",
+              "outline-variant": "#c4c6cd",
+              "on-secondary-fixed-variant": "#004e60",
+              "primary-fixed-dim": "#b5c8df",
+              "secondary-container": "#00ccf9",
+              "outline": "#74777d",
+              "on-tertiary-fixed-variant": "#005049",
+              "inverse-primary": "#b5c8df",
+              "surface-dim": "#d8dadc",
+              "error": "#ba1a1a",
+              "surface": "#f7f9fb"
+            },
+            fontFamily: {
+              "headline": ["Space Grotesk"],
+              "body": ["Manrope"],
+              "label": ["JetBrains Mono"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(24px);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface selection:bg-secondary-fixed selection:text-on-secondary-fixed">
+<!-- Top Navigation -->
+<nav class="fixed top-0 w-full z-50 bg-surface-container-low/80 backdrop-blur-md">
+<div class="flex justify-between items-center px-6 h-16 w-full max-w-[1440px] mx-auto">
+<div class="flex items-center gap-8">
+<span class="font-headline font-bold text-xl text-primary tracking-tighter">IDS.Sentinel</span>
+<div class="hidden md:flex gap-6">
+<a class="text-on-surface-variant hover:text-primary transition-colors" href="#">Home</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors" href="#">About</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors" href="#">Reports</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">search</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">dark_mode</span>
+<button class="bg-primary text-on-primary px-4 py-2 rounded-xl text-sm font-bold shadow-sm active:scale-95 transition-transform">
+                    Live Dashboard
+                </button>
+</div>
+</div>
+</nav>
+<!-- Side Navigation -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 bg-surface-container-low hidden lg:flex flex-col p-4 gap-2">
+<div class="mb-6 px-2">
+<h2 class="font-headline font-bold text-lg text-primary">CAN Bus IDS</h2>
+<p class="text-xs text-on-surface-variant opacity-70">Precision Sentinel</p>
+</div>
+<nav class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-transform hover:translate-x-1" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-transform hover:translate-x-1" href="#">
+<span class="material-symbols-outlined text-[20px]">account_tree</span>
+<span class="text-sm font-medium">Model &amp; Pipeline</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-transform hover:translate-x-1" href="#">
+<span class="material-symbols-outlined text-[20px]">integration_instructions</span>
+<span class="text-sm font-medium">API &amp; Integration</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-transform hover:translate-x-1" href="#">
+<span class="material-symbols-outlined text-[20px]">analytics</span>
+<span class="text-sm font-medium">Reports</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 bg-surface-container-lowest text-primary rounded-lg shadow-sm font-bold" href="#">
+<span class="material-symbols-outlined text-[20px]">verified_user</span>
+<span class="text-sm font-medium">Security</span>
+</a>
+</nav>
+<div class="mt-auto space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-transform hover:translate-x-1" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-transform hover:translate-x-1" href="#">
+<span class="material-symbols-outlined text-[20px]">help</span>
+<span class="text-sm font-medium">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="lg:ml-64 pt-24 pb-12 px-6 md:px-12 max-w-7xl mx-auto">
+<!-- Header Section -->
+<header class="mb-16">
+<h1 class="font-headline text-5xl font-bold tracking-tight text-primary mb-4">Precision Integrity</h1>
+<p class="text-lg text-on-surface-variant max-w-2xl">Ensuring the cryptographic and physical safety of automotive networks through advanced intrusion detection and hardened system architecture.</p>
+</header>
+<!-- Security: Threat Model & Hardening (Asymmetric Layout) -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-24">
+<div class="lg:col-span-7">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-secondary">security</span>
+<h2 class="font-headline text-2xl font-bold">Threat Model</h2>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10">
+<span class="material-symbols-outlined text-error mb-4">car_crash</span>
+<h3 class="font-headline font-bold text-lg mb-2">Injection Attacks</h3>
+<p class="text-sm text-on-surface-variant">Mitigating unauthorized CAN message injection that could manipulate ECU behavior or bypass safety protocols.</p>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10">
+<span class="material-symbols-outlined text-secondary mb-4">sensors_off</span>
+<h3 class="font-headline font-bold text-lg mb-2">DoS Mitigation</h3>
+<p class="text-sm text-on-surface-variant">Preventing high-priority message flooding designed to saturate bus capacity and delay critical safety frames.</p>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10">
+<span class="material-symbols-outlined text-secondary mb-4">key</span>
+<h3 class="font-headline font-bold text-lg mb-2">ECU Impersonation</h3>
+<p class="text-sm text-on-surface-variant">Deep packet inspection to verify frame origins and prevent spoofing of legitimate Electronic Control Units.</p>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/10">
+<span class="material-symbols-outlined text-secondary mb-4">memory</span>
+<h3 class="font-headline font-bold text-lg mb-2">Bus-Off Exploits</h3>
+<p class="text-sm text-on-surface-variant">Monitoring error frame counters to detect forced bus-off states used to silence diagnostic and safety systems.</p>
+</div>
+</div>
+</div>
+<div class="lg:col-span-5 bg-surface-container-low p-8 rounded-xl">
+<h3 class="font-headline font-bold text-xl mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">verified</span>
+                    Hardening Checklist
+                </h3>
+<ul class="space-y-6">
+<li class="flex gap-4">
+<span class="bg-tertiary-container/20 text-tertiary-fixed-dim rounded-full w-6 h-6 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check</span>
+</span>
+<div>
+<span class="font-headline font-bold block text-primary">TLS 1.3 Transport</span>
+<p class="text-xs text-on-surface-variant">All telemetry and API calls are wrapped in modern cryptographic envelopes.</p>
+</div>
+</li>
+<li class="flex gap-4">
+<span class="bg-tertiary-container/20 text-tertiary-fixed-dim rounded-full w-6 h-6 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check</span>
+</span>
+<div>
+<span class="font-headline font-bold block text-primary">JWT Authentication</span>
+<p class="text-xs text-on-surface-variant">Stateless, cryptographically signed tokens for secure session management.</p>
+</div>
+</li>
+<li class="flex gap-4">
+<span class="bg-tertiary-container/20 text-tertiary-fixed-dim rounded-full w-6 h-6 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check</span>
+</span>
+<div>
+<span class="font-headline font-bold block text-primary">CORS &amp; Security Headers</span>
+<p class="text-xs text-on-surface-variant">Strict origin policy and CSP to mitigate cross-site scripting and framing.</p>
+</div>
+</li>
+<li class="flex gap-4">
+<span class="bg-tertiary-container/20 text-tertiary-fixed-dim rounded-full w-6 h-6 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check</span>
+</span>
+<div>
+<span class="font-headline font-bold block text-primary">Dynamic Rate Limiting</span>
+<p class="text-xs text-on-surface-variant">Sliding-window rate limiters prevent brute-force and API exhaustion.</p>
+</div>
+</li>
+</ul>
+</div>
+</section>
+<!-- Privacy Section: Glassmorphism Card -->
+<section class="mb-24">
+<div class="glass-panel p-10 md:p-16 rounded-[2rem] relative overflow-hidden bg-gradient-to-br from-surface-container-lowest to-surface-container-low">
+<div class="relative z-10 max-w-3xl">
+<span class="inline-block px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-bold mb-6">PRIVACY FIRST</span>
+<h2 class="font-headline text-4xl font-bold text-primary mb-6 leading-tight">Data Handling &amp; Provenance</h2>
+<div class="space-y-6 text-on-surface-variant">
+<p>We treat vehicle data with the same sensitivity as financial records. Our <strong>Data Minimization Policy</strong> ensures that only essential CAN message IDs and payloads required for anomaly detection are ever transmitted to our analysis engines.</p>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
+<div>
+<h4 class="font-headline font-bold text-primary mb-2">Anonymization</h4>
+<p class="text-sm">VIN and GPS coordinates are masked at the edge before analysis, ensuring data remains non-identifiable during processing.</p>
+</div>
+<div>
+<h4 class="font-headline font-bold text-primary mb-2">Provenance</h4>
+<p class="text-sm">We strictly utilize public research datasets (CAR-HACK, OTIDS) and verified OEM captures with documented lineage.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute -right-20 -top-20 w-80 h-80 bg-secondary-container/10 rounded-full blur-3xl"></div>
+</div>
+</section>
+<!-- About Section & Roadmap (Bento Grid) -->
+<section class="mb-24">
+<div class="flex items-center justify-between mb-8">
+<h2 class="font-headline text-3xl font-bold">Project &amp; Roadmap</h2>
+<div class="h-px flex-1 bg-outline-variant/20 mx-8"></div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Mission Card -->
+<div class="md:col-span-2 bg-primary text-on-primary p-10 rounded-[1.5rem] flex flex-col justify-between overflow-hidden relative">
+<div class="relative z-10">
+<h3 class="font-headline text-2xl font-bold mb-4">Our Mission</h3>
+<p class="text-lg opacity-80 leading-relaxed">To democratize automotive security by providing open, high-precision detection models that protect the vehicles of tomorrow from the cyber threats of today.</p>
+</div>
+<div class="mt-12 flex gap-4 relative z-10">
+<div class="flex -space-x-3">
+<img class="w-10 h-10 rounded-full border-2 border-primary object-cover" data-alt="portrait of a focused software engineer in a modern office with soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHRX4e5LgRRiuV3Fd19GhNYf2I4d4jNxO8QMHIqoEj2GEX0Eva_pKvov2IawW_HVXDJwmrXuntYh6XO9cz9pqwkovfB9qpE4BTuiV8uuUtOrtT6mKEGJ5_Y3qMWQnMcREsR3v_wp6C_SeREsNxSyqrCBOjCPQLjDG5okBnHV89P2TTw0VT0u800vW9ydsecnig3evyLprLTFp9yWA32ai9BK2lHGOR2aH4zUTuvdXkljaB3Hj25IKceIjvTFH9uJSmfcfsRXtHsJ0"/>
+<img class="w-10 h-10 rounded-full border-2 border-primary object-cover" data-alt="professional woman smiling in a bright creative studio environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1D1VCW7Jg1UFde3B4CafCH0ecmA5av7hELRKFANILa40AWRwUJBCIlWLvqbnHuetcMs7PUcySm2dcqJxbflZ1smKA0libAgSXBGZHYW4EOVYeqOpq-KylhRgdRfLCV0tZc1rXIQPBJoYtCZdbfIX7G0CDXLNSbM-c_P-neVdhLJbHKIirvDsq0SqpMjt3bfOVi_PCuCkXAUUW0AKZX4to4OzptqJplqJM0S9Zc8wEOHZMiQmShxjnAc282Fe8VUO4xCuQ6J1OSFM"/>
+<div class="w-10 h-10 rounded-full border-2 border-primary bg-primary-container flex items-center justify-center text-xs font-bold">+12</div>
+</div>
+<p class="text-sm opacity-60 self-center">Contributors from 4 global teams</p>
+</div>
+<div class="absolute bottom-[-10%] right-[-5%] opacity-10">
+<span class="material-symbols-outlined text-[160px]">shield_with_heart</span>
+</div>
+</div>
+<!-- Roadmap Card -->
+<div class="bg-surface-container-high p-8 rounded-[1.5rem]">
+<h3 class="font-headline font-bold text-xl mb-6">Roadmap</h3>
+<div class="space-y-6">
+<div class="flex gap-4">
+<span class="font-label text-secondary font-bold text-xs pt-1">Q3 24</span>
+<p class="text-sm font-medium">Edge deployment for embedded ARM Cortex-M7 platforms.</p>
+</div>
+<div class="flex gap-4">
+<span class="font-label text-on-surface-variant font-bold text-xs pt-1">Q4 24</span>
+<p class="text-sm font-medium opacity-60">Full CAN-FD support for higher data rates.</p>
+</div>
+<div class="flex gap-4">
+<span class="font-label text-on-surface-variant font-bold text-xs pt-1">Q1 25</span>
+<p class="text-sm font-medium opacity-60">SHAP-based explainability for detected anomalies.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Tech Stack Grid -->
+<section class="mb-24">
+<h2 class="font-headline text-2xl font-bold mb-8 text-center">Engineered For Performance</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- ML Stack -->
+<div class="p-6">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-secondary">psychology</span>
+<h4 class="font-headline font-bold text-lg">Machine Learning</h4>
+</div>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-surface-container text-on-surface-variant rounded-full text-xs font-label">PyTorch</span>
+<span class="px-3 py-1 bg-surface-container text-on-surface-variant rounded-full text-xs font-label">Transformers</span>
+<span class="px-3 py-1 bg-surface-container text-on-surface-variant rounded-full text-xs font-label">Scikit-learn</span>
+<span class="px-3 py-1 bg-surface-container text-on-surface-variant rounded-full text-xs font-label">NumPy</span>
+</div>
+</div>
+<!-- Backend Stack -->
+<div class="p-6">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-secondary">terminal</span>
+<h4 class="font-headline font-bold text-lg">Backend Engine</h4>
+</div>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-surface-container text-on-surface-variant rounded-full text-xs font-label">FastAPI</span>
+<span class="px-3 py-1 bg-surface-container text-on-surface-variant rounded-full text-xs font-label">WebSockets</span>
+<span class="px-3 py-1 bg-surface-container text-on-surface-variant rounded-full text-xs font-label">Redis</span>
+<span class="px-3 py-1 bg-surface-container text-on-surface-variant rounded-full text-xs font-label">PostgreSQL</span>
+</div>
+</div>
+<!-- Frontend Stack -->
+<div class="p-6">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-secondary">layers</span>
+<h4 class="font-headline font-bold text-lg">Interface</h4>
+</div>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-surface-container text-on-surface-variant rounded-full text-xs font-label">React</span>
+<span class="px-3 py-1 bg-surface-container text-on-surface-variant rounded-full text-xs font-label">Tailwind CSS</span>
+<span class="px-3 py-1 bg-surface-container text-on-surface-variant rounded-full text-xs font-label">Recharts</span>
+<span class="px-3 py-1 bg-surface-container text-on-surface-variant rounded-full text-xs font-label">Framer Motion</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Contact Form Section -->
+<section class="max-w-4xl mx-auto mb-24">
+<div class="bg-surface-container-low p-8 md:p-12 rounded-[1.5rem] text-center">
+<h2 class="font-headline text-3xl font-bold mb-4">Connect with Our Engineers</h2>
+<p class="text-on-surface-variant mb-10">Have questions about deployment or contribution? We're here to help.</p>
+<form class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+<div class="space-y-2">
+<label class="text-xs font-bold text-primary px-1">Name</label>
+<input class="w-full bg-surface-container-lowest border-none rounded-xl p-3 focus:ring-1 focus:ring-secondary" placeholder="Your Name" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-primary px-1">Email</label>
+<input class="w-full bg-surface-container-lowest border-none rounded-xl p-3 focus:ring-1 focus:ring-secondary" placeholder="email@organization.com" type="email"/>
+</div>
+<div class="md:col-span-2 space-y-2">
+<label class="text-xs font-bold text-primary px-1">Message</label>
+<textarea class="w-full bg-surface-container-lowest border-none rounded-xl p-3 focus:ring-1 focus:ring-secondary" placeholder="How can we assist your security journey?" rows="4"></textarea>
+</div>
+<div class="md:col-span-2 mt-4">
+<button class="w-full bg-primary text-on-primary py-4 rounded-xl font-bold hover:opacity-90 transition-opacity">
+                            Send Secure Message
+                        </button>
+</div>
+</form>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full bg-surface-container-low mt-auto">
+<div class="flex flex-col md:flex-row justify-between items-center px-8 py-12 w-full max-w-[1440px] mx-auto">
+<div class="mb-8 md:mb-0">
+<span class="font-headline font-bold text-primary text-lg">IDS.Sentinel</span>
+<p class="font-body text-xs text-on-surface-variant mt-2">© 2024 IDS.Sentinel Automotive Cyber-Intelligence</p>
+</div>
+<div class="flex gap-8">
+<a class="text-xs text-on-surface-variant hover:text-primary transition-colors" href="#">Mission</a>
+<a class="text-xs text-on-surface-variant hover:text-primary transition-colors" href="#">Tech Stack</a>
+<a class="text-xs text-on-surface-variant hover:text-primary transition-colors" href="#">Documentation</a>
+<a class="text-xs text-on-surface-variant hover:text-primary transition-colors" href="#">Contact</a>
+</div>
+</div>
+</footer>
+</body></html>
