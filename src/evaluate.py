@@ -1,1024 +1,704 @@
-# src/evaluate.py
-# Phase 8: Comprehensive Model Evaluation for CAN Bus IDS
-# ==============================================================================
-# This script evaluates the Transformer-Based Intrusion Detection System (IDS)
-# for CAN Bus Networks using DistilBERT's reconstruction loss as anomaly score.
-# ==============================================================================
+# pyright: reportMissingImports=false
+"""Model evaluation pipeline for CAN Bus IDS.
 
-import os
-import sys
-import json
+This script evaluates the trained DistilBERT anomaly detector by scoring:
+- 3000 normal sequences from sequences.pt
+- 3000 attack sequences built from attack_traffic.csv
+
+Outputs under reports/:
+- confusion_matrix.png (dark-themed)
+- roc_curve.png
+- pr_curve.png
+- score_distribution.png
+- metrics_summary.png
+- model_evaluation_report.pdf
+"""
+
+from __future__ import annotations
+
 import gc
-import warnings
-from pathlib import Path
+import json
 from datetime import datetime
-from typing import Tuple, Dict, List, Optional
-
-# Fix Windows console encoding for Unicode characters
-if sys.platform == 'win32':
-    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+from pathlib import Path
+from typing import Dict, Iterable, List, Tuple
 
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, TensorDataset
-from transformers import DistilBertConfig, DistilBertForMaskedLM
-from tqdm import tqdm
-
-# Visualization
-import matplotlib.pyplot as plt
-import seaborn as sns
+from matplotlib import pyplot as plt
+from reportlab.lib import colors  # pyright: ignore[reportMissingImports]
+from reportlab.lib.pagesizes import A4  # pyright: ignore[reportMissingImports]
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet  # pyright: ignore[reportMissingImports]
+from reportlab.lib.units import inch  # pyright: ignore[reportMissingImports]
+from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle  # pyright: ignore[reportMissingImports]
 from sklearn.metrics import (
-    confusion_matrix,
-    roc_curve,
-    auc,
-    precision_recall_curve,
-    classification_report,
     accuracy_score,
+    average_precision_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    precision_recall_curve,
     precision_score,
     recall_score,
-    f1_score
+    roc_auc_score,
+    roc_curve,
 )
+from torch.utils.data import DataLoader, TensorDataset
+from tqdm import tqdm
+from transformers import DistilBertConfig, DistilBertForMaskedLM
 
-# Suppress warnings for cleaner output
-warnings.filterwarnings('ignore')
 
-# ===============================================================================
-# CONFIGURATION
-# ===============================================================================
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data"
+MODELS_DIR = BASE_DIR / "models"
+REPORTS_DIR = BASE_DIR / "reports"
 
-# Paths
-BASE_DIR       = Path(__file__).resolve().parent.parent
-DATA_DIR       = BASE_DIR / "data"
-MODELS_DIR     = BASE_DIR / "models"
-RESULTS_DIR    = BASE_DIR / "results"
-FIGURES_DIR    = RESULTS_DIR / "figures"
+VOCAB_PATH = DATA_DIR / "vocab.json"
+SEQUENCES_PATH = DATA_DIR / "sequences.pt"
+ATTACK_CSV_PATH = DATA_DIR / "attack_traffic.csv"
+MODEL_PATH = MODELS_DIR / "best_model.pt"
+THRESHOLD_PATH = MODELS_DIR / "threshold.json"
 
-VOCAB_PATH     = DATA_DIR / "vocab.json"
-MODEL_PATH     = MODELS_DIR / "best_model.pt"
-TEST_CSV_PATH  = DATA_DIR / "DoS_dataset.csv"
+WINDOW_SIZE = 64
+MASK_RATIO = 0.15
+BATCH_SIZE = 128
+NUM_NORMAL = 3000
+NUM_ATTACK = 3000
 
-# Evaluation hyperparameters
-WINDOW_SIZE        = 64       # Sliding window size (must match training)
-BATCH_SIZE         = 128      # Batch size for inference
-THRESHOLD_PERCENTILE = 99     # Percentile for threshold calibration
-MASK_RATIO         = 0.15     # MLM mask ratio for scoring
-
-# Special token IDs (must match training)
-PAD_ID  = 0
+PAD_ID = 0
 MASK_ID = 1
-UNK_ID  = 2
+UNK_ID = 2
 
-# Device configuration
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-# ===============================================================================
-# UTILITY FUNCTIONS
-# ===============================================================================
-
-def print_header(title: str, char: str = "=", width: int = 70) -> None:
-    """Print a formatted section header."""
-    print(f"\n{char * width}")
-    print(f"  {title}")
-    print(f"{char * width}")
+def seed_everything(seed: int = 42) -> None:
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 
-def print_subheader(title: str) -> None:
-    """Print a formatted sub-section header."""
-    print(f"\n{'-' * 50}")
-    print(f"  {title}")
-    print(f"{'-' * 50}")
-
-
-def check_file_exists(path: Path, description: str) -> None:
-    """Check if a required file exists, exit with error message if not."""
+def ensure_exists(path: Path, description: str) -> None:
     if not path.exists():
-        print(f"\n❌ ERROR: {description} not found!")
-        print(f"   Expected path: {path}")
-        print(f"   Please ensure the file exists before running evaluation.")
-        sys.exit(1)
+        raise FileNotFoundError(f"Missing {description}: {path}")
 
 
-def format_number(n: int) -> str:
-    """Format number with commas for readability."""
-    return f"{n:,}"
+def load_json(path: Path) -> Dict:
+    with path.open("r", encoding="utf-8") as f:
+        return json.load(f)
 
 
-# ===============================================================================
-# STEP 1: LOAD VOCABULARY
-# ===============================================================================
-
-def load_vocabulary(vocab_path: Path) -> Dict[str, int]:
-    """
-    Load the vocabulary mapping from hex CAN IDs to integer tokens.
-
-    Args:
-        vocab_path: Path to vocab.json file
-
-    Returns:
-        Dictionary mapping hex CAN ID strings to integer token IDs
-    """
-    print_header("STEP 1: Loading Vocabulary")
-
-    check_file_exists(vocab_path, "Vocabulary file (vocab.json)")
-
-    with open(vocab_path, 'r') as f:
-        vocab = json.load(f)
-
-    vocab_size = len(vocab)
-    num_special = sum(1 for k in vocab.keys() if k.startswith('['))
-    num_can_ids = vocab_size - num_special
-
-    print(f"  [OK] Vocabulary loaded successfully")
-    print(f"    * Total tokens    : {vocab_size}")
-    print(f"    * Special tokens  : {num_special} ([PAD], [MASK], [UNK])")
-    print(f"    * CAN ID tokens   : {num_can_ids}")
-    print(f"    * Vocab path      : {vocab_path}")
-
-    return vocab
+def load_vocab(path: Path) -> Dict[str, int]:
+    ensure_exists(path, "vocabulary file")
+    vocab = load_json(path)
+    if not isinstance(vocab, dict):
+        raise ValueError("vocab.json must contain an object mapping token->id")
+    return {str(k).lower(): int(v) for k, v in vocab.items()}
 
 
-# ===============================================================================
-# STEP 2: LOAD TRAINED MODEL
-# ===============================================================================
-
-def load_model(model_path: Path, vocab_size: int) -> DistilBertForMaskedLM:
-    """
-    Load the trained DistilBERT model for inference.
-
-    Args:
-        model_path: Path to best_model.pt checkpoint
-        vocab_size: Size of vocabulary for model configuration
-
-    Returns:
-        Loaded model in evaluation mode on the appropriate device
-    """
-    print_header("STEP 2: Loading Trained Model")
-
-    check_file_exists(model_path, "Model checkpoint (best_model.pt)")
-
-    # Load checkpoint
-    print(f"  Loading checkpoint from: {model_path}")
-    checkpoint = torch.load(model_path, map_location=DEVICE, weights_only=False)
-
-    # Display training metadata
-    print(f"  [OK] Checkpoint loaded!")
-    print(f"    * Saved at epoch  : {checkpoint.get('epoch', 'N/A')}")
-    print(f"    * Best val loss   : {checkpoint.get('val_loss', 'N/A'):.6f}")
-
-    # Reconstruct model architecture (must match training config exactly)
+def build_model(vocab_size: int) -> DistilBertForMaskedLM:
     config = DistilBertConfig(
-        vocab_size              = vocab_size,
-        max_position_embeddings = WINDOW_SIZE,
-        dim                     = 256,
-        n_layers                = 4,
-        n_heads                 = 4,
-        hidden_dim              = 1024,
-        dropout                 = 0.1,
-        attention_dropout       = 0.1,
-        pad_token_id            = PAD_ID,
+        vocab_size=vocab_size,
+        max_position_embeddings=WINDOW_SIZE,
+        dim=256,
+        n_layers=4,
+        n_heads=4,
+        hidden_dim=1024,
+        dropout=0.1,
+        attention_dropout=0.1,
+        pad_token_id=PAD_ID,
     )
-
-    model = DistilBertForMaskedLM(config)
-    model.load_state_dict(checkpoint['model_state'])
-    model = model.to(DEVICE)
-    model.eval()  # Set to evaluation mode (disables dropout)
-
-    # Calculate model parameters
-    total_params = sum(p.numel() for p in model.parameters())
-    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-    print(f"  [OK] Model loaded and set to eval mode")
-    print(f"    * Device          : {DEVICE}")
-    print(f"    * Total params    : {format_number(total_params)}")
-    print(f"    * Architecture    : DistilBERT (4 layers, 4 heads, dim=256)")
-
-    return model
+    return DistilBertForMaskedLM(config)
 
 
-# ===============================================================================
-# STEP 3: LOAD AND PREPROCESS TEST DATA
-# ===============================================================================
+def load_model(path: Path, vocab_size: int) -> Tuple[DistilBertForMaskedLM, Dict]:
+    ensure_exists(path, "model checkpoint")
+    checkpoint = torch.load(path, map_location=DEVICE, weights_only=False)
 
-def load_and_preprocess_test_data(
-    csv_path: Path,
-    vocab: Dict[str, int],
-    window_size: int = WINDOW_SIZE,
-    max_sequences: Optional[int] = None
-) -> Tuple[torch.Tensor, np.ndarray]:
-    """
-    Load test CSV, tokenize CAN IDs, create sliding windows, and generate labels.
+    model = build_model(vocab_size)
+    state_dict = checkpoint.get("model_state")
+    if state_dict is None:
+        raise KeyError("Checkpoint does not contain 'model_state'")
 
-    A sequence is labeled as ATTACK (1) if ANY frame in the 64-frame window
-    has a 'T' (attack) flag. Otherwise, it is labeled as NORMAL (0).
+    model.load_state_dict(state_dict)
+    model.to(DEVICE)
+    model.eval()
+    return model, checkpoint
 
-    Args:
-        csv_path: Path to DoS_dataset.csv
-        vocab: Vocabulary mapping hex CAN IDs to integers
-        window_size: Size of sliding window (default: 64)
-        max_sequences: Optional limit on number of sequences to process
 
-    Returns:
-        Tuple of (sequences_tensor, labels_array)
-        - sequences_tensor: Shape (N, window_size) with tokenized CAN IDs
-        - labels_array: Shape (N,) with 0=normal, 1=attack
-    """
-    print_header("STEP 3: Loading and Preprocessing Test Data")
+def load_threshold(path: Path) -> Dict[str, float]:
+    ensure_exists(path, "threshold.json")
+    data = load_json(path)
+    if "threshold" not in data:
+        raise KeyError("threshold.json must contain 'threshold'")
+    return data
 
-    check_file_exists(csv_path, f"Test dataset ({csv_path.name})")
 
-    # Define column names (CSV has no header)
+def normalize_can_id(raw: str) -> str:
+    token = str(raw).strip().lower()
+    if token.startswith("0x"):
+        token = token[2:]
+    return token.zfill(4)
+
+
+def extract_id_series(df_chunk: pd.DataFrame) -> Iterable[str]:
+    if "ID" in df_chunk.columns:
+        return df_chunk["ID"].astype(str)
+    if len(df_chunk.columns) > 1:
+        return df_chunk.iloc[:, 1].astype(str)
+    return df_chunk.iloc[:, 0].astype(str)
+
+
+def load_normal_sequences(path: Path, sample_size: int) -> torch.Tensor:
+    ensure_exists(path, "normal sequence tensor")
+    payload = torch.load(path, map_location="cpu", weights_only=False)
+
+    if isinstance(payload, torch.Tensor):
+        sequences = payload
+    elif isinstance(payload, dict) and "sequences" in payload:
+        sequences = payload["sequences"]
+    else:
+        raise ValueError("Unsupported sequences.pt format. Expected Tensor or dict with 'sequences'.")
+
+    if not isinstance(sequences, torch.Tensor):
+        raise TypeError("Loaded sequences are not a torch.Tensor")
+    if sequences.ndim != 2 or sequences.shape[1] != WINDOW_SIZE:
+        raise ValueError(f"Expected tensor shape (N, {WINDOW_SIZE}), got {tuple(sequences.shape)}")
+
+    total = sequences.shape[0]
+    if total < sample_size:
+        raise ValueError(f"Not enough normal sequences in sequences.pt: found {total}, need {sample_size}")
+
+    indices = torch.randperm(total)[:sample_size]
+    return sequences[indices].long()
+
+
+def build_attack_sequences(path: Path, vocab: Dict[str, int], sample_size: int) -> torch.Tensor:
+    ensure_exists(path, "attack_traffic.csv")
+
     col_names = [
-        'Timestamp', 'ID', 'DLC',
-        'D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'Flag'
+        "Timestamp", "ID", "DLC", "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "Flag"
     ]
 
-    print(f"  Loading CSV: {csv_path.name}")
-    print(f"  This may take a few moments for large datasets...")
+    token_buffer: List[int] = []
+    sequences: List[List[int]] = []
 
-    # Buffers for streaming processing
-    token_buffer = []
-    flag_buffer = []
-    sequences = []
-    labels = []
+    reader = pd.read_csv(
+        path,
+        header=None,
+        names=col_names,
+        chunksize=100_000,
+        on_bad_lines="skip",
+        dtype=str,
+        low_memory=False,
+    )
 
-    total_frames = 0
-    attack_frames = 0
-    unk_tokens = 0
+    for chunk in reader:
+        ids = extract_id_series(chunk)
+        for raw_id in ids:
+            can_id = normalize_can_id(raw_id)
+            token_buffer.append(vocab.get(can_id, UNK_ID))
 
-    # Process in chunks for memory efficiency
-    chunk_size = 100_000
+            if len(token_buffer) >= WINDOW_SIZE:
+                sequences.append(token_buffer[:WINDOW_SIZE])
+                token_buffer = token_buffer[WINDOW_SIZE:]
 
-    for chunk in tqdm(
-        pd.read_csv(
-            csv_path,
-            chunksize=chunk_size,
-            header=None,
-            names=col_names,
-            on_bad_lines='skip',
-            dtype={'ID': str, 'Flag': str}
-        ),
-        desc="  Processing chunks",
-        unit="chunk"
-    ):
-        # Clean and normalize CAN IDs
-        chunk['ID'] = chunk['ID'].astype(str).str.strip().str.lower()
-        chunk['Flag'] = chunk['Flag'].astype(str).str.strip().str.upper()
+            if len(sequences) >= sample_size:
+                break
 
-        # Tokenize CAN IDs
-        for _, row in chunk.iterrows():
-            can_id = row['ID']
-            flag = row['Flag']
-
-            # Map CAN ID to token (UNK if not in vocab)
-            token = vocab.get(can_id, UNK_ID)
-            if token == UNK_ID:
-                unk_tokens += 1
-
-            token_buffer.append(token)
-            flag_buffer.append(flag)
-
-            total_frames += 1
-            if flag == 'T':
-                attack_frames += 1
-
-        # Create sliding windows when buffer has enough frames
-        while len(token_buffer) >= window_size:
-            # Extract window
-            window_tokens = token_buffer[:window_size]
-            window_flags = flag_buffer[:window_size]
-
-            sequences.append(window_tokens)
-
-            # Label: 1 if ANY frame in window is attack ('T'), else 0
-            is_attack = 1 if 'T' in window_flags else 0
-            labels.append(is_attack)
-
-            # Slide window by 1 (can adjust stride for speed vs coverage)
-            token_buffer = token_buffer[window_size:]  # Non-overlapping for efficiency
-            flag_buffer = flag_buffer[window_size:]
-
-        # Check if we've reached the limit
-        if max_sequences and len(sequences) >= max_sequences:
-            sequences = sequences[:max_sequences]
-            labels = labels[:max_sequences]
+        if len(sequences) >= sample_size:
             break
 
-    # Convert to tensors
-    sequences_tensor = torch.tensor(sequences, dtype=torch.long)
-    labels_array = np.array(labels, dtype=np.int32)
+    if len(sequences) < sample_size:
+        raise ValueError(
+            f"Not enough attack sequences generated from attack_traffic.csv. "
+            f"Generated {len(sequences)}, need {sample_size}."
+        )
 
-    # Calculate statistics
-    num_sequences = len(sequences)
-    num_normal = np.sum(labels_array == 0)
-    num_attack = np.sum(labels_array == 1)
-    attack_ratio = num_attack / num_sequences * 100 if num_sequences > 0 else 0
-
-    print(f"\n  [OK] Data preprocessing complete!")
-    print(f"    * Total frames processed : {format_number(total_frames)}")
-    print(f"    * Attack frames          : {format_number(attack_frames)} ({attack_frames/total_frames*100:.2f}%)")
-    print(f"    * Unknown tokens (UNK)   : {format_number(unk_tokens)}")
-    print(f"    * Sequences created      : {format_number(num_sequences)}")
-    print(f"    * Normal sequences       : {format_number(num_normal)} ({100-attack_ratio:.2f}%)")
-    print(f"    * Attack sequences       : {format_number(num_attack)} ({attack_ratio:.2f}%)")
-    print(f"    * Window size            : {window_size} frames")
-
-    return sequences_tensor, labels_array
+    return torch.tensor(sequences[:sample_size], dtype=torch.long)
 
 
-# ===============================================================================
-# STEP 4: CALCULATE ANOMALY SCORES (BATCH INFERENCE)
-# ===============================================================================
+def _ensure_at_least_one_mask(masked_indices: torch.Tensor, special: torch.Tensor) -> torch.Tensor:
+    rows = torch.where(masked_indices.sum(dim=1) == 0)[0]
+    if rows.numel() == 0:
+        return masked_indices
 
-def calculate_anomaly_scores(
-    model: DistilBertForMaskedLM,
-    sequences: torch.Tensor,
-    batch_size: int = BATCH_SIZE,
-    mask_ratio: float = MASK_RATIO
-) -> np.ndarray:
-    """
-    Calculate reconstruction loss (anomaly score) for each sequence.
+    for row in rows.tolist():
+        candidates = torch.where(~special[row])[0]
+        if candidates.numel() == 0:
+            candidates = torch.arange(masked_indices.shape[1], device=masked_indices.device)
+        pick = candidates[torch.randint(0, candidates.numel(), (1,), device=masked_indices.device)]
+        masked_indices[row, pick] = True
 
-    Uses MLM-style masking: mask 15% of tokens, predict them, and calculate
-    cross-entropy loss. Higher loss = more anomalous = likely attack.
+    return masked_indices
 
-    Args:
-        model: Trained DistilBERT model in eval mode
-        sequences: Tensor of shape (N, seq_len) with tokenized sequences
-        batch_size: Batch size for inference
-        mask_ratio: Fraction of tokens to mask (default: 0.15)
 
-    Returns:
-        Array of anomaly scores, one per sequence
-    """
-    print_header("STEP 4: Computing Anomaly Scores")
+def score_batch(model: DistilBertForMaskedLM, batch: torch.Tensor) -> np.ndarray:
+    batch = batch.to(DEVICE)
+    bsz, seq_len = batch.shape
 
-    model.eval()
-    all_scores = []
+    input_ids = batch.clone()
+    labels = torch.full((bsz, seq_len), -100, dtype=torch.long, device=DEVICE)
 
+    mask_prob = torch.rand((bsz, seq_len), device=DEVICE)
+    masked_indices = mask_prob < MASK_RATIO
+
+    special = (batch == PAD_ID) | (batch == MASK_ID) | (batch == UNK_ID)
+    masked_indices = masked_indices & ~special
+    masked_indices = _ensure_at_least_one_mask(masked_indices, special)
+
+    labels[masked_indices] = batch[masked_indices]
+    input_ids[masked_indices] = MASK_ID
+
+    attention_mask = torch.ones((bsz, seq_len), dtype=torch.long, device=DEVICE)
+
+    with torch.no_grad():
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+        logits = outputs.logits
+
+        loss_per_pos = F.cross_entropy(
+            logits.view(-1, logits.size(-1)),
+            labels.view(-1),
+            ignore_index=-100,
+            reduction="none",
+        ).view(bsz, seq_len)
+
+        mask_counts = (labels != -100).sum(dim=1).clamp(min=1)
+        scores = loss_per_pos.sum(dim=1) / mask_counts
+
+    return scores.detach().cpu().numpy()
+
+
+def score_sequences(model: DistilBertForMaskedLM, sequences: torch.Tensor, batch_size: int) -> np.ndarray:
     dataset = TensorDataset(sequences)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
-    print(f"  Computing scores for {format_number(len(sequences))} sequences...")
-    print(f"  Batch size: {batch_size} | Mask ratio: {mask_ratio*100:.0f}%")
+    all_scores: List[np.ndarray] = []
+    for (batch,) in tqdm(loader, desc="Scoring", unit="batch"):
+        batch_scores = score_batch(model, batch)
+        all_scores.append(batch_scores)
 
-    with torch.no_grad():
-        for (batch,) in tqdm(loader, desc="  Inference", unit="batch"):
-            batch = batch.to(DEVICE)
-            B, L = batch.shape
+        del batch
+        gc.collect()
 
-            # Clone input for masking
-            input_ids = batch.clone()
-            labels = torch.full((B, L), -100, dtype=torch.long, device=DEVICE)
-
-            # Create random mask (15% of tokens)
-            prob_matrix = torch.rand(B, L, device=DEVICE)
-            masked_indices = prob_matrix < mask_ratio
-
-            # Never mask special tokens
-            special_mask = (
-                (batch == PAD_ID) |
-                (batch == MASK_ID) |
-                (batch == UNK_ID)
-            )
-            masked_indices = masked_indices & ~special_mask
-
-            # Set labels at masked positions (for loss calculation)
-            labels[masked_indices] = batch[masked_indices]
-
-            # Replace masked positions with [MASK] token
-            input_ids[masked_indices] = MASK_ID
-
-            # Create attention mask (all 1s since no padding)
-            attention_mask = torch.ones(B, L, dtype=torch.long, device=DEVICE)
-
-            # Forward pass
-            outputs = model(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                labels=labels
-            )
-
-            # Calculate per-sequence loss
-            logits = outputs.logits  # (B, L, vocab_size)
-            loss_per_pos = F.cross_entropy(
-                logits.view(-1, logits.size(-1)),
-                labels.view(-1),
-                reduction='none',
-                ignore_index=-100
-            ).view(B, L)
-
-            # Average over masked positions per sequence
-            mask_counts = (labels != -100).sum(dim=1).float().clamp(min=1)
-            seq_scores = loss_per_pos.sum(dim=1) / mask_counts
-
-            all_scores.extend(seq_scores.cpu().numpy())
-
-            # Memory cleanup
-            del batch, input_ids, labels, outputs, logits
-
-    gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
-    scores = np.array(all_scores)
-
-    print(f"\n  [OK] Anomaly scores computed!")
-    print(f"    * Mean score   : {np.mean(scores):.6f}")
-    print(f"    * Std score    : {np.std(scores):.6f}")
-    print(f"    * Min score    : {np.min(scores):.6f}")
-    print(f"    * Max score    : {np.max(scores):.6f}")
-
-    return scores
+    return np.concatenate(all_scores, axis=0)
 
 
-# ===============================================================================
-# STEP 5: CALIBRATE THRESHOLD (99th PERCENTILE ON NORMAL DATA)
-# ===============================================================================
+def compute_metrics(y_true: np.ndarray, scores: np.ndarray, threshold: float) -> Dict:
+    y_pred = (scores > threshold).astype(np.int32)
 
-def calibrate_threshold(
-    scores: np.ndarray,
-    labels: np.ndarray,
-    percentile: int = THRESHOLD_PERCENTILE
-) -> float:
-    """
-    Calculate the anomaly threshold using only NORMAL sequences.
+    cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
+    tn, fp, fn, tp = cm.ravel().tolist()
 
-    The threshold is set at the Nth percentile of normal sequence scores,
-    meaning N% of normal traffic will be below this threshold.
+    accuracy = accuracy_score(y_true, y_pred)
+    precision = precision_score(y_true, y_pred, zero_division=0)
+    recall = recall_score(y_true, y_pred, zero_division=0)
+    f1 = f1_score(y_true, y_pred, zero_division=0)
+    specificity = (tn / (tn + fp)) if (tn + fp) else 0.0
 
-    Args:
-        scores: Array of anomaly scores for all sequences
-        labels: Array of ground truth labels (0=normal, 1=attack)
-        percentile: Percentile to use for threshold (default: 99)
+    fpr_curve, tpr_curve, _ = roc_curve(y_true, scores)
+    precision_curve, recall_curve, _ = precision_recall_curve(y_true, scores)
 
-    Returns:
-        Calibrated threshold value
-    """
-    print_header("STEP 5: Calibrating Detection Threshold")
+    auc_score = roc_auc_score(y_true, scores)
+    ap_score = average_precision_score(y_true, scores)
 
-    # Extract scores for NORMAL sequences only
-    normal_mask = labels == 0
-    normal_scores = scores[normal_mask]
+    report_text = classification_report(
+        y_true,
+        y_pred,
+        labels=[0, 1],
+        target_names=["Normal", "Attack"],
+        digits=4,
+        zero_division=0,
+    )
 
-    if len(normal_scores) == 0:
-        print("  [!] WARNING: No normal sequences found! Using overall percentile.")
-        normal_scores = scores
-
-    # Calculate threshold at specified percentile
-    threshold = float(np.percentile(normal_scores, percentile))
-
-    # Calculate statistics for normal traffic
-    mean_normal = float(np.mean(normal_scores))
-    std_normal = float(np.std(normal_scores))
-    min_normal = float(np.min(normal_scores))
-    max_normal = float(np.max(normal_scores))
-
-    print(f"  Using {format_number(len(normal_scores))} NORMAL sequences for calibration")
-    print(f"\n  Normal Traffic Score Statistics:")
-    print(f"    * Mean   : {mean_normal:.6f}")
-    print(f"    * Std    : {std_normal:.6f}")
-    print(f"    * Min    : {min_normal:.6f}")
-    print(f"    * Max    : {max_normal:.6f}")
-    print(f"\n  [OK] Threshold ({percentile}th percentile): {threshold:.6f}")
-    print(f"    -> Any score > {threshold:.6f} will be classified as ATTACK")
-
-    return threshold
-
-
-# ===============================================================================
-# STEP 6: CLASSIFICATION AND METRICS
-# ===============================================================================
-
-def evaluate_and_print_metrics(
-    scores: np.ndarray,
-    labels: np.ndarray,
-    threshold: float
-) -> Dict:
-    """
-    Classify sequences and compute comprehensive evaluation metrics.
-
-    Args:
-        scores: Array of anomaly scores
-        labels: Array of ground truth labels (0=normal, 1=attack)
-        threshold: Classification threshold
-
-    Returns:
-        Dictionary containing all metrics and predictions
-    """
-    print_header("STEP 6: Classification and Evaluation Metrics")
-
-    # Generate predictions: score > threshold -> attack (1)
-    predictions = (scores > threshold).astype(int)
-
-    # Calculate confusion matrix components
-    tn = np.sum((predictions == 0) & (labels == 0))  # True Negatives
-    fp = np.sum((predictions == 1) & (labels == 0))  # False Positives
-    fn = np.sum((predictions == 0) & (labels == 1))  # False Negatives
-    tp = np.sum((predictions == 1) & (labels == 1))  # True Positives
-
-    total_normal = np.sum(labels == 0)
-    total_attack = np.sum(labels == 1)
-    total = len(labels)
-
-    # Calculate metrics
-    accuracy = accuracy_score(labels, predictions)
-    precision = precision_score(labels, predictions, zero_division=0)
-    recall = recall_score(labels, predictions, zero_division=0)  # Detection Rate / TPR
-    f1 = f1_score(labels, predictions, zero_division=0)
-
-    # False Positive Rate (FPR) and False Negative Rate (FNR)
-    fpr = fp / total_normal if total_normal > 0 else 0
-    fnr = fn / total_attack if total_attack > 0 else 0
-
-    # Specificity (True Negative Rate)
-    specificity = tn / total_normal if total_normal > 0 else 0
-
-    # Print detailed report
-    print(f"\n  {'-' * 50}")
-    print(f"  CONFUSION MATRIX BREAKDOWN")
-    print(f"  {'-' * 50}")
-    print(f"  | True Negatives  (TN) : {format_number(tn):>10} | Normal correctly identified")
-    print(f"  | False Positives (FP) : {format_number(fp):>10} | Normal misclassified as attack")
-    print(f"  | False Negatives (FN) : {format_number(fn):>10} | Attack missed (not detected)")
-    print(f"  | True Positives  (TP) : {format_number(tp):>10} | Attack correctly detected")
-    print(f"  {'-' * 50}")
-
-    print(f"\n  {'-' * 50}")
-    print(f"  CLASSIFICATION METRICS")
-    print(f"  {'-' * 50}")
-    print(f"  | Accuracy             : {accuracy * 100:>8.4f}%  | Overall correctness")
-    print(f"  | Precision            : {precision * 100:>8.4f}%  | Of predicted attacks, how many are real")
-    print(f"  | Recall (Detection)   : {recall * 100:>8.4f}%  | Of real attacks, how many were detected")
-    print(f"  | F1-Score             : {f1 * 100:>8.4f}%  | Harmonic mean of precision & recall")
-    print(f"  | Specificity          : {specificity * 100:>8.4f}%  | Of normal traffic, how many identified")
-    print(f"  | False Positive Rate  : {fpr * 100:>8.4f}%  | Normal misclassified as attack")
-    print(f"  | False Negative Rate  : {fnr * 100:>8.4f}%  | Attacks missed")
-    print(f"  {'-' * 50}")
-
-    print(f"\n  DATASET SUMMARY")
-    print(f"  Total sequences    : {format_number(total)}")
-    print(f"  Normal sequences   : {format_number(total_normal)}")
-    print(f"  Attack sequences   : {format_number(total_attack)}")
-    print(f"  Threshold used     : {threshold:.6f}")
-
-    # Store all results
-    results = {
-        'predictions': predictions,
-        'scores': scores,
-        'labels': labels,
-        'threshold': threshold,
-        'confusion_matrix': {
-            'tn': int(tn), 'fp': int(fp),
-            'fn': int(fn), 'tp': int(tp)
-        },
-        'metrics': {
-            'accuracy': float(accuracy),
-            'precision': float(precision),
-            'recall': float(recall),
-            'f1_score': float(f1),
-            'specificity': float(specificity),
-            'false_positive_rate': float(fpr),
-            'false_negative_rate': float(fnr)
-        },
-        'dataset_info': {
-            'total_sequences': int(total),
-            'normal_sequences': int(total_normal),
-            'attack_sequences': int(total_attack)
-        }
+    return {
+        "y_pred": y_pred,
+        "cm": cm,
+        "tn": tn,
+        "fp": fp,
+        "fn": fn,
+        "tp": tp,
+        "accuracy": float(accuracy),
+        "precision": float(precision),
+        "recall": float(recall),
+        "f1": float(f1),
+        "specificity": float(specificity),
+        "auc": float(auc_score),
+        "ap": float(ap_score),
+        "fpr_curve": fpr_curve,
+        "tpr_curve": tpr_curve,
+        "precision_curve": precision_curve,
+        "recall_curve": recall_curve,
+        "report_text": report_text,
     }
 
-    return results
 
+def save_confusion_matrix(cm: np.ndarray, out_path: Path) -> None:
+    fig, ax = plt.subplots(figsize=(8, 6), facecolor="#0f172a")
+    ax.set_facecolor("#0f172a")
 
-# ===============================================================================
-# STEP 7: SAVE PREDICTIONS
-# ===============================================================================
-
-def save_predictions(
-    results: Dict,
-    output_path: Path
-) -> None:
-    """
-    Save predictions, scores, and labels to CSV file.
-
-    Args:
-        results: Dictionary containing predictions, scores, labels
-        output_path: Path to save the CSV file
-    """
-    print_header("STEP 7: Saving Predictions")
-
-    # Create DataFrame
-    df = pd.DataFrame({
-        'sequence_index': range(len(results['predictions'])),
-        'anomaly_score': results['scores'],
-        'ground_truth': results['labels'],
-        'prediction': results['predictions'],
-        'ground_truth_label': ['attack' if l == 1 else 'normal' for l in results['labels']],
-        'prediction_label': ['attack' if p == 1 else 'normal' for p in results['predictions']],
-        'correct': results['predictions'] == results['labels']
-    })
-
-    # Ensure output directory exists
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Save to CSV
-    df.to_csv(output_path, index=False)
-
-    print(f"  [OK] Predictions saved to: {output_path}")
-    print(f"    * Total rows: {format_number(len(df))}")
-    print(f"    * Columns: {', '.join(df.columns)}")
-
-    # Also save metrics to JSON
-    metrics_path = output_path.parent / "evaluation_metrics.json"
-    metrics_data = {
-        'evaluation_timestamp': datetime.now().isoformat(),
-        'threshold': results['threshold'],
-        'threshold_percentile': THRESHOLD_PERCENTILE,
-        'confusion_matrix': results['confusion_matrix'],
-        'metrics': results['metrics'],
-        'dataset_info': results['dataset_info']
-    }
-
-    with open(metrics_path, 'w') as f:
-        json.dump(metrics_data, f, indent=2)
-
-    print(f"  [OK] Metrics saved to: {metrics_path}")
-
-
-# ===============================================================================
-# STEP 8: GENERATE VISUALIZATIONS
-# ===============================================================================
-
-def generate_visualizations(
-    results: Dict,
-    figures_dir: Path
-) -> None:
-    """
-    Generate and save Confusion Matrix and ROC Curve visualizations.
-
-    Args:
-        results: Dictionary containing predictions, scores, labels
-        figures_dir: Directory to save figure files
-    """
-    print_header("STEP 8: Generating Visualizations")
-
-    # Ensure figures directory exists
-    figures_dir.mkdir(parents=True, exist_ok=True)
-
-    # Set style for professional-looking plots
-    plt.style.use('seaborn-v0_8-whitegrid')
-    sns.set_palette("husl")
-
-    # ---------------------------------------------------------------------------
-    # FIGURE 1: CONFUSION MATRIX
-    # ---------------------------------------------------------------------------
-    print("\n  Generating Confusion Matrix...")
-
-    cm = confusion_matrix(results['labels'], results['predictions'])
-
-    fig, ax = plt.subplots(figsize=(10, 8))
-
-    # Create heatmap with custom colormap
     sns.heatmap(
         cm,
         annot=True,
-        fmt='d',
-        cmap='Blues',
-        xticklabels=['Normal (0)', 'Attack (1)'],
-        yticklabels=['Normal (0)', 'Attack (1)'],
+        fmt="d",
+        cmap="Blues",
+        cbar=True,
+        xticklabels=["Pred Normal", "Pred Attack"],
+        yticklabels=["True Normal", "True Attack"],
+        annot_kws={"color": "#e5e7eb", "fontsize": 14, "fontweight": "bold"},
         ax=ax,
-        cbar_kws={'label': 'Count'},
-        annot_kws={'size': 16, 'weight': 'bold'}
     )
 
-    ax.set_xlabel('Predicted Label', fontsize=14, fontweight='bold')
-    ax.set_ylabel('True Label', fontsize=14, fontweight='bold')
-    ax.set_title(
-        'Confusion Matrix - CAN Bus IDS Evaluation\n'
-        f'Accuracy: {results["metrics"]["accuracy"]*100:.2f}% | '
-        f'F1-Score: {results["metrics"]["f1_score"]*100:.2f}%',
-        fontsize=14,
-        fontweight='bold',
-        pad=20
-    )
-
-    # Add percentage annotations
-    cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-    for i in range(2):
-        for j in range(2):
-            ax.text(
-                j + 0.5, i + 0.7,
-                f'({cm_normalized[i, j]*100:.1f}%)',
-                ha='center', va='center',
-                fontsize=11, color='gray'
-            )
+    ax.set_title("Confusion Matrix", color="#f8fafc", fontsize=16, pad=12)
+    ax.tick_params(colors="#cbd5e1")
+    ax.set_xlabel("Predicted", color="#e2e8f0")
+    ax.set_ylabel("Actual", color="#e2e8f0")
 
     plt.tight_layout()
+    plt.savefig(out_path, dpi=220, facecolor=fig.get_facecolor())
+    plt.close(fig)
 
-    cm_path = figures_dir / "confusion_matrix.png"
-    plt.savefig(cm_path, dpi=300, bbox_inches='tight', facecolor='white')
-    plt.close()
 
-    print(f"  [OK] Confusion Matrix saved: {cm_path}")
+def save_roc_curve(fpr: np.ndarray, tpr: np.ndarray, auc_score: float, out_path: Path) -> None:
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.plot(fpr, tpr, color="#2563eb", linewidth=2.5, label=f"ROC (AUC={auc_score:.4f})")
+    ax.plot([0, 1], [0, 1], linestyle="--", color="#9ca3af", linewidth=1.5)
+    ax.set_title("ROC Curve", fontsize=15)
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+    ax.grid(alpha=0.25)
+    ax.legend(loc="lower right")
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=220)
+    plt.close(fig)
 
-    # ---------------------------------------------------------------------------
-    # FIGURE 2: ROC CURVE
-    # ---------------------------------------------------------------------------
-    print("\n  Generating ROC Curve...")
 
-    # Calculate ROC curve points
-    fpr_curve, tpr_curve, thresholds = roc_curve(results['labels'], results['scores'])
-    roc_auc = auc(fpr_curve, tpr_curve)
+def save_pr_curve(recall: np.ndarray, precision: np.ndarray, ap_score: float, out_path: Path) -> None:
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.plot(recall, precision, color="#0f766e", linewidth=2.5, label=f"PR (AP={ap_score:.4f})")
+    ax.set_title("Precision-Recall Curve", fontsize=15)
+    ax.set_xlabel("Recall")
+    ax.set_ylabel("Precision")
+    ax.grid(alpha=0.25)
+    ax.legend(loc="lower left")
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=220)
+    plt.close(fig)
 
-    fig, ax = plt.subplots(figsize=(10, 8))
 
-    # Plot ROC curve
-    ax.plot(
-        fpr_curve, tpr_curve,
-        color='#2563eb',
-        lw=3,
-        label=f'ROC Curve (AUC = {roc_auc:.4f})'
-    )
+def save_score_distribution(normal_scores: np.ndarray, attack_scores: np.ndarray, threshold: float, out_path: Path) -> None:
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.hist(normal_scores, bins=45, alpha=0.7, color="#2563eb", label="Normal", density=True)
+    ax.hist(attack_scores, bins=45, alpha=0.65, color="#dc2626", label="Attack", density=True)
+    ax.axvline(threshold, color="#f97316", linestyle="--", linewidth=2.2, label=f"Threshold={threshold:.4f}")
+    ax.set_title("Anomaly Score Distribution", fontsize=15)
+    ax.set_xlabel("Anomaly Score")
+    ax.set_ylabel("Density")
+    ax.grid(alpha=0.22)
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=220)
+    plt.close(fig)
 
-    # Plot diagonal (random classifier)
-    ax.plot(
-        [0, 1], [0, 1],
-        color='gray',
-        lw=2,
-        linestyle='--',
-        label='Random Classifier (AUC = 0.5)'
-    )
 
-    # Mark the operating point (current threshold)
-    current_fpr = results['metrics']['false_positive_rate']
-    current_tpr = results['metrics']['recall']
-    ax.scatter(
-        [current_fpr], [current_tpr],
-        s=200,
-        c='red',
-        marker='o',
-        zorder=5,
-        label=f'Operating Point (FPR={current_fpr:.3f}, TPR={current_tpr:.3f})'
-    )
+def save_metrics_summary(metrics: Dict[str, float], out_path: Path) -> None:
+    labels = ["Accuracy", "Precision", "Recall", "F1", "Specificity", "AUC", "AP"]
+    values = [
+        metrics["accuracy"],
+        metrics["precision"],
+        metrics["recall"],
+        metrics["f1"],
+        metrics["specificity"],
+        metrics["auc"],
+        metrics["ap"],
+    ]
 
-    # Fill area under curve
-    ax.fill_between(fpr_curve, tpr_curve, alpha=0.2, color='#2563eb')
+    colors_list = ["#1d4ed8", "#2563eb", "#0f766e", "#16a34a", "#4f46e5", "#dc2626", "#f59e0b"]
 
-    ax.set_xlim([0.0, 1.0])
-    ax.set_ylim([0.0, 1.05])
-    ax.set_xlabel('False Positive Rate (1 - Specificity)', fontsize=14, fontweight='bold')
-    ax.set_ylabel('True Positive Rate (Recall / Sensitivity)', fontsize=14, fontweight='bold')
-    ax.set_title(
-        'ROC Curve - CAN Bus Intrusion Detection System\n'
-        f'Threshold: {results["threshold"]:.4f} ({THRESHOLD_PERCENTILE}th percentile)',
-        fontsize=14,
-        fontweight='bold',
-        pad=20
-    )
-    ax.legend(loc='lower right', fontsize=11)
-    ax.grid(True, alpha=0.3)
+    fig, ax = plt.subplots(figsize=(9, 5.8))
+    y = np.arange(len(labels))
+    bars = ax.barh(y, values, color=colors_list, alpha=0.9)
 
-    # Add performance zone annotations
-    ax.axhline(y=0.9, color='green', linestyle=':', alpha=0.5, label='90% Detection')
-    ax.axvline(x=0.1, color='orange', linestyle=':', alpha=0.5, label='10% FPR')
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels)
+    ax.set_xlim(0, 1.0)
+    ax.set_xlabel("Score")
+    ax.set_title("Metrics Summary", fontsize=15)
+    ax.grid(axis="x", alpha=0.2)
+
+    for idx, bar in enumerate(bars):
+        ax.text(values[idx] + 0.01, bar.get_y() + bar.get_height() / 2, f"{values[idx]:.4f}", va="center")
 
     plt.tight_layout()
+    plt.savefig(out_path, dpi=220)
+    plt.close(fig)
 
-    roc_path = figures_dir / "roc_curve.png"
-    plt.savefig(roc_path, dpi=300, bbox_inches='tight', facecolor='white')
-    plt.close()
 
-    print(f"  [OK] ROC Curve saved: {roc_path}")
+def _summary_conclusion(metrics: Dict[str, float], threshold: float) -> str:
+    quality = "strong"
+    if metrics["f1"] < 0.8 or metrics["auc"] < 0.85:
+        quality = "moderate"
+    if metrics["f1"] < 0.65 or metrics["auc"] < 0.75:
+        quality = "limited"
 
-    # ---------------------------------------------------------------------------
-    # FIGURE 3: SCORE DISTRIBUTION (BONUS)
-    # ---------------------------------------------------------------------------
-    print("\n  Generating Score Distribution...")
-
-    fig, ax = plt.subplots(figsize=(12, 6))
-
-    normal_scores = results['scores'][results['labels'] == 0]
-    attack_scores = results['scores'][results['labels'] == 1]
-
-    # Plot distributions
-    ax.hist(
-        normal_scores,
-        bins=100,
-        alpha=0.7,
-        color='#22c55e',
-        label=f'Normal Traffic (n={format_number(len(normal_scores))})',
-        density=True
-    )
-    ax.hist(
-        attack_scores,
-        bins=100,
-        alpha=0.7,
-        color='#ef4444',
-        label=f'Attack Traffic (n={format_number(len(attack_scores))})',
-        density=True
+    return (
+        f"The DistilBERT-based CAN IDS demonstrates {quality} detection performance under the "
+        f"selected threshold ({threshold:.4f}). The anomaly score distributions indicate separation "
+        "between normal and attack traffic, while ROC and PR trends confirm ranking quality for "
+        "attack detection. Threshold calibration and periodic retraining are recommended for long-term "
+        "deployment stability as vehicle traffic profiles evolve."
     )
 
-    # Plot threshold line
-    ax.axvline(
-        results['threshold'],
-        color='#f97316',
-        linestyle='--',
-        linewidth=3,
-        label=f'Threshold: {results["threshold"]:.4f}'
+
+def generate_pdf_report(
+    output_pdf: Path,
+    model_info: Dict[str, str],
+    metrics: Dict[str, float],
+    chart_paths: Dict[str, Path],
+) -> None:
+    doc = SimpleDocTemplate(str(output_pdf), pagesize=A4, title="CAN Bus IDS Model Evaluation")
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        "TitleStyle",
+        parent=styles["Title"],
+        fontSize=26,
+        textColor=colors.HexColor("#0f172a"),
+        spaceAfter=14,
+        alignment=1,
+    )
+    subtitle_style = ParagraphStyle(
+        "SubtitleStyle",
+        parent=styles["Normal"],
+        fontSize=12,
+        textColor=colors.HexColor("#334155"),
+        alignment=1,
+        leading=18,
+    )
+    heading_style = ParagraphStyle(
+        "HeadingStyle",
+        parent=styles["Heading2"],
+        textColor=colors.HexColor("#0f172a"),
+        spaceAfter=8,
+    )
+    body_style = ParagraphStyle(
+        "BodyStyle",
+        parent=styles["BodyText"],
+        fontSize=10,
+        leading=15,
+        textColor=colors.HexColor("#1f2937"),
     )
 
-    ax.set_xlabel('Anomaly Score (Reconstruction Loss)', fontsize=14, fontweight='bold')
-    ax.set_ylabel('Density', fontsize=14, fontweight='bold')
-    ax.set_title(
-        'Anomaly Score Distribution - Normal vs Attack Traffic\n'
-        f'Separation indicates model discriminative power',
-        fontsize=14,
-        fontweight='bold',
-        pad=20
+    story: List = []
+
+    # Title page
+    story.append(Spacer(1, 1.8 * inch))
+    story.append(Paragraph("CAN Bus Intrusion Detection System", title_style))
+    story.append(Paragraph("Model Evaluation Report", title_style))
+    story.append(Spacer(1, 0.25 * inch))
+    story.append(
+        Paragraph(
+            f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}<br/>"
+            "Architecture: DistilBERT (4 layers, 4 heads, dim=256)",
+            subtitle_style,
+        )
     )
-    ax.legend(loc='upper right', fontsize=11)
-    ax.grid(True, alpha=0.3)
+    story.append(PageBreak())
 
-    plt.tight_layout()
-
-    dist_path = figures_dir / "score_distribution.png"
-    plt.savefig(dist_path, dpi=300, bbox_inches='tight', facecolor='white')
-    plt.close()
-
-    print(f"  [OK] Score Distribution saved: {dist_path}")
-
-    # ---------------------------------------------------------------------------
-    # FIGURE 4: PRECISION-RECALL CURVE (BONUS)
-    # ---------------------------------------------------------------------------
-    print("\n  Generating Precision-Recall Curve...")
-
-    precision_curve, recall_curve, _ = precision_recall_curve(
-        results['labels'], results['scores']
+    # Model info table
+    story.append(Paragraph("Model Information", heading_style))
+    model_rows = [["Field", "Value"]] + [[k, str(v)] for k, v in model_info.items()]
+    model_table = Table(model_rows, colWidths=[2.2 * inch, 4.8 * inch])
+    model_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 1), (0, -1), "Helvetica-Bold"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#f8fafc")),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
     )
-    pr_auc = auc(recall_curve, precision_curve)
+    story.append(model_table)
+    story.append(Spacer(1, 0.3 * inch))
 
-    fig, ax = plt.subplots(figsize=(10, 8))
-
-    ax.plot(
-        recall_curve, precision_curve,
-        color='#8b5cf6',
-        lw=3,
-        label=f'PR Curve (AUC = {pr_auc:.4f})'
+    # Metrics table
+    story.append(Paragraph("Evaluation Metrics", heading_style))
+    metric_rows = [
+        ["Metric", "Value"],
+        ["Accuracy", f"{metrics['accuracy']:.4f}"],
+        ["Precision", f"{metrics['precision']:.4f}"],
+        ["Recall", f"{metrics['recall']:.4f}"],
+        ["F1", f"{metrics['f1']:.4f}"],
+        ["Specificity", f"{metrics['specificity']:.4f}"],
+        ["AUC", f"{metrics['auc']:.4f}"],
+        ["AP", f"{metrics['ap']:.4f}"],
+    ]
+    metric_table = Table(metric_rows, colWidths=[2.2 * inch, 2.1 * inch])
+    metric_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1d4ed8")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#eff6ff")),
+                ("ALIGN", (1, 1), (1, -1), "RIGHT"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
     )
+    story.append(metric_table)
+    story.append(PageBreak())
 
-    # Mark operating point
-    ax.scatter(
-        [results['metrics']['recall']],
-        [results['metrics']['precision']],
-        s=200,
-        c='red',
-        marker='o',
-        zorder=5,
-        label=f'Operating Point (P={results["metrics"]["precision"]:.3f}, R={results["metrics"]["recall"]:.3f})'
-    )
+    chart_titles = [
+        ("Confusion Matrix", "confusion_matrix"),
+        ("ROC Curve", "roc_curve"),
+        ("Precision-Recall Curve", "pr_curve"),
+        ("Score Distribution", "score_distribution"),
+        ("Metrics Summary", "metrics_summary"),
+    ]
 
-    ax.fill_between(recall_curve, precision_curve, alpha=0.2, color='#8b5cf6')
+    for idx, (title, key) in enumerate(chart_titles):
+        story.append(Paragraph(title, heading_style))
+        chart_path = chart_paths[key]
+        story.append(Image(str(chart_path), width=6.7 * inch, height=4.1 * inch))
+        if idx != len(chart_titles) - 1:
+            story.append(PageBreak())
 
-    ax.set_xlim([0.0, 1.0])
-    ax.set_ylim([0.0, 1.05])
-    ax.set_xlabel('Recall (True Positive Rate)', fontsize=14, fontweight='bold')
-    ax.set_ylabel('Precision', fontsize=14, fontweight='bold')
-    ax.set_title(
-        'Precision-Recall Curve - CAN Bus IDS\n'
-        f'F1-Score: {results["metrics"]["f1_score"]*100:.2f}%',
-        fontsize=14,
-        fontweight='bold',
-        pad=20
-    )
-    ax.legend(loc='lower left', fontsize=11)
-    ax.grid(True, alpha=0.3)
+    story.append(PageBreak())
+    story.append(Paragraph("Summary Conclusion", heading_style))
+    story.append(Paragraph(_summary_conclusion(metrics, float(model_info["Threshold"])), body_style))
 
-    plt.tight_layout()
-
-    pr_path = figures_dir / "precision_recall_curve.png"
-    plt.savefig(pr_path, dpi=300, bbox_inches='tight', facecolor='white')
-    plt.close()
-
-    print(f"  [OK] Precision-Recall Curve saved: {pr_path}")
-
-    print(f"\n  [OK] All visualizations saved to: {figures_dir}")
+    doc.build(story)
 
 
-# ===============================================================================
-# MAIN EXECUTION
-# ===============================================================================
+def main() -> None:
+    seed_everything(42)
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
-def main():
-    """
-    Main evaluation pipeline.
+    print("=" * 76)
+    print("CAN Bus IDS - Model Evaluation")
+    print("=" * 76)
+    print(f"Device: {DEVICE}")
 
-    Orchestrates the complete evaluation workflow:
-    1. Load vocabulary
-    2. Load trained model
-    3. Load and preprocess test data
-    4. Calculate anomaly scores
-    5. Calibrate threshold
-    6. Generate predictions and metrics
-    7. Save results
-    8. Generate visualizations
-    """
-    start_time = datetime.now()
+    vocab = load_vocab(VOCAB_PATH)
+    threshold_data = load_threshold(THRESHOLD_PATH)
+    threshold = float(threshold_data["threshold"])
 
-    # Print banner
-    print("\n" + "=" * 70)
-    print("  >> CAN BUS INTRUSION DETECTION SYSTEM - MODEL EVALUATION")
-    print("     Phase 8: Comprehensive Performance Assessment")
-    print("=" * 70)
-    print(f"\n  Started at: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"  Device: {DEVICE} {'(GPU Accelerated)' if DEVICE.type == 'cuda' else '(CPU)'}")
+    model, checkpoint = load_model(MODEL_PATH, vocab_size=len(vocab))
 
-    # -------------------------------------------------------------------------
-    # STEP 1: Load vocabulary
-    # -------------------------------------------------------------------------
-    vocab = load_vocabulary(VOCAB_PATH)
-    vocab_size = len(vocab)
+    print("Loading normal and attack samples...")
+    normal_sequences = load_normal_sequences(SEQUENCES_PATH, NUM_NORMAL)
+    attack_sequences = build_attack_sequences(ATTACK_CSV_PATH, vocab, NUM_ATTACK)
 
-    # -------------------------------------------------------------------------
-    # STEP 2: Load model
-    # -------------------------------------------------------------------------
-    model = load_model(MODEL_PATH, vocab_size)
+    print(f"Normal sample shape: {tuple(normal_sequences.shape)}")
+    print(f"Attack sample shape: {tuple(attack_sequences.shape)}")
 
-    # -------------------------------------------------------------------------
-    # STEP 3: Load and preprocess test data
-    # -------------------------------------------------------------------------
-    sequences, labels = load_and_preprocess_test_data(
-        TEST_CSV_PATH,
-        vocab,
-        window_size=WINDOW_SIZE,
-        max_sequences=None  # Process all data (set to integer to limit)
-    )
+    print("Scoring normal sequences...")
+    normal_scores = score_sequences(model, normal_sequences, BATCH_SIZE)
 
-    # -------------------------------------------------------------------------
-    # STEP 4: Calculate anomaly scores
-    # -------------------------------------------------------------------------
-    scores = calculate_anomaly_scores(
-        model,
-        sequences,
-        batch_size=BATCH_SIZE,
-        mask_ratio=MASK_RATIO
-    )
+    print("Scoring attack sequences...")
+    attack_scores = score_sequences(model, attack_sequences, BATCH_SIZE)
 
-    # -------------------------------------------------------------------------
-    # STEP 5: Calibrate threshold using ONLY normal sequences
-    # -------------------------------------------------------------------------
-    threshold = calibrate_threshold(
-        scores,
-        labels,
-        percentile=THRESHOLD_PERCENTILE
+    all_scores = np.concatenate([normal_scores, attack_scores])
+    y_true = np.concatenate([
+        np.zeros(len(normal_scores), dtype=np.int32),
+        np.ones(len(attack_scores), dtype=np.int32),
+    ])
+
+    metrics = compute_metrics(y_true=y_true, scores=all_scores, threshold=threshold)
+
+    print("\nClassification Report")
+    print("-" * 76)
+    print(metrics["report_text"])
+    print("-" * 76)
+    print(
+        "Exact metrics: "
+        f"Accuracy={metrics['accuracy']:.6f}, "
+        f"Precision={metrics['precision']:.6f}, "
+        f"Recall={metrics['recall']:.6f}, "
+        f"F1={metrics['f1']:.6f}, "
+        f"Specificity={metrics['specificity']:.6f}, "
+        f"AUC={metrics['auc']:.6f}, "
+        f"AP={metrics['ap']:.6f}"
     )
 
-    # -------------------------------------------------------------------------
-    # STEP 6: Evaluate and print metrics
-    # -------------------------------------------------------------------------
-    results = evaluate_and_print_metrics(scores, labels, threshold)
+    chart_paths = {
+        "confusion_matrix": REPORTS_DIR / "confusion_matrix.png",
+        "roc_curve": REPORTS_DIR / "roc_curve.png",
+        "pr_curve": REPORTS_DIR / "pr_curve.png",
+        "score_distribution": REPORTS_DIR / "score_distribution.png",
+        "metrics_summary": REPORTS_DIR / "metrics_summary.png",
+    }
 
-    # -------------------------------------------------------------------------
-    # STEP 7: Save predictions
-    # -------------------------------------------------------------------------
-    predictions_path = RESULTS_DIR / "predictions.csv"
-    save_predictions(results, predictions_path)
+    save_confusion_matrix(metrics["cm"], chart_paths["confusion_matrix"])
+    save_roc_curve(metrics["fpr_curve"], metrics["tpr_curve"], metrics["auc"], chart_paths["roc_curve"])
+    save_pr_curve(metrics["recall_curve"], metrics["precision_curve"], metrics["ap"], chart_paths["pr_curve"])
+    save_score_distribution(normal_scores, attack_scores, threshold, chart_paths["score_distribution"])
+    save_metrics_summary(metrics, chart_paths["metrics_summary"])
 
-    # -------------------------------------------------------------------------
-    # STEP 8: Generate visualizations
-    # -------------------------------------------------------------------------
-    generate_visualizations(results, FIGURES_DIR)
+    model_info = {
+        "Project": "CAN Bus Intrusion Detection System",
+        "Architecture": "DistilBERT (4 layers, 4 heads, dim=256)",
+        "Checkpoint Epoch": str(checkpoint.get("epoch", "N/A")),
+        "Validation Loss": f"{float(checkpoint.get('val_loss', float('nan'))):.6f}",
+        "Threshold": f"{threshold:.6f}",
+        "Threshold Percentile": str(threshold_data.get("percentile", "N/A")),
+        "Masking Ratio": f"{MASK_RATIO:.2f}",
+        "Normal Samples": str(NUM_NORMAL),
+        "Attack Samples": str(NUM_ATTACK),
+        "Device": str(DEVICE),
+    }
 
-    # -------------------------------------------------------------------------
-    # FINAL SUMMARY
-    # -------------------------------------------------------------------------
-    end_time = datetime.now()
-    duration = end_time - start_time
+    pdf_path = REPORTS_DIR / "model_evaluation_report.pdf"
+    generate_pdf_report(pdf_path, model_info, metrics, chart_paths)
 
-    print_header("EVALUATION COMPLETE", char="=")
-    print(f"""
-  [OK] Model evaluated successfully!
+    # Persist a frontend-friendly metrics file.
+    metrics_json_path = REPORTS_DIR / "metrics.json"
+    metrics_payload = {
+        "generated_at": datetime.now().isoformat(),
+        "threshold": threshold,
+        "threshold_info": threshold_data,
+        "samples": {"normal": NUM_NORMAL, "attack": NUM_ATTACK},
+        "metrics": {
+            "accuracy": metrics["accuracy"],
+            "precision": metrics["precision"],
+            "recall": metrics["recall"],
+            "f1": metrics["f1"],
+            "specificity": metrics["specificity"],
+            "auc": metrics["auc"],
+            "ap": metrics["ap"],
+            "tn": metrics["tn"],
+            "fp": metrics["fp"],
+            "fn": metrics["fn"],
+            "tp": metrics["tp"],
+        },
+    }
+    with metrics_json_path.open("w", encoding="utf-8") as f:
+        json.dump(metrics_payload, f, indent=2)
 
-  [RESULTS] KEY RESULTS:
-     * Accuracy           : {results['metrics']['accuracy']*100:.2f}%
-     * Precision          : {results['metrics']['precision']*100:.2f}%
-     * Recall (Detection) : {results['metrics']['recall']*100:.2f}%
-     * F1-Score           : {results['metrics']['f1_score']*100:.2f}%
-     * False Positive Rate: {results['metrics']['false_positive_rate']*100:.4f}%
-     * False Negative Rate: {results['metrics']['false_negative_rate']*100:.4f}%
-
-  [FILES] OUTPUT FILES:
-     * Predictions   : {RESULTS_DIR / 'predictions.csv'}
-     * Metrics JSON  : {RESULTS_DIR / 'evaluation_metrics.json'}
-     * Confusion Mat : {FIGURES_DIR / 'confusion_matrix.png'}
-     * ROC Curve     : {FIGURES_DIR / 'roc_curve.png'}
-     * Score Dist    : {FIGURES_DIR / 'score_distribution.png'}
-     * PR Curve      : {FIGURES_DIR / 'precision_recall_curve.png'}
-
-  [TIME]  Total runtime: {duration}
-""")
+    print("\nSaved outputs:")
+    for key, value in chart_paths.items():
+        print(f"  {key}: {value}")
+    print(f"  pdf: {pdf_path}")
+    print(f"  metrics_json: {metrics_json_path}")
 
 
 if __name__ == "__main__":

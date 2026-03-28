@@ -1,20 +1,25 @@
-// =============================================================================
-// App.tsx - Main Application Component
-// =============================================================================
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AppLayout } from './layout/AppLayout';
+import { AboutPage } from './pages/AboutPage';
+import { AnalyzePage } from './pages/AnalyzePage';
+import { DashboardPage } from './pages/DashboardPage';
+import { ReportsPage } from './pages/ReportsPage';
 
-import React from 'react';
-import { Dashboard } from './components/Dashboard';
-
-/**
- * Root application component.
- * Renders the main dashboard for the CAN Bus IDS.
- */
-const App: React.FC = () => {
+function App() {
   return (
-    <div className="min-h-screen bg-cyber-darker">
-      <Dashboard />
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<AppLayout />}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="analyze" element={<AnalyzePage />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="about" element={<AboutPage />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
-};
+}
 
 export default App;

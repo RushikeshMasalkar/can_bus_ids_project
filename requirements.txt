@@ -31,3 +31,11 @@ ipywidgets
 tqdm
 requests
 pyarrow
+joblib
+reportlab
+
+# Backend API
+fastapi
+uvicorn[standard]
+pydantic
+python-multipart
