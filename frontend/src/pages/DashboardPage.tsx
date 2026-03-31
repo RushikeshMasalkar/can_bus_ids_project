@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useLiveStream } from '../hooks/useLiveStream';
+import { apiClient } from '../api/client';
+import { useLiveStreamContext } from '../context/LiveStreamContext';
 import { ConsoleLayout } from '../layout/ConsoleLayout';
 
-const DONUT_COLORS = ['#162839', '#00677f', '#00ccf9', '#b7eaff', '#48b8ab'];
+const DONUT_COLORS = ['#2A73CC', '#1F5FA8', '#4E89D6', '#7AA8E2', '#A7C7ED'];
 const FALLBACK_TYPES = ['DoS', 'Fuzzy', 'Gear', 'RPM'];
 
 export function DashboardPage() {
@@ -17,7 +18,72 @@ export function DashboardPage() {
     threshold,
     scoreDistribution,
     attackBreakdown,
-  } = useLiveStream();
+  } = useLiveStreamContext();
+
+  const [thresholdInput, setThresholdInput] = useState(0);
+  const [thresholdEdited, setThresholdEdited] = useState(false);
+  const [streamIntervalMs, setStreamIntervalMs] = useState(650);
+  const [controlBusy, setControlBusy] = useState<'threshold' | 'speed' | null>(null);
+  const [controlNotice, setControlNotice] = useState<string | null>(null);
+  const [controlError, setControlError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!thresholdEdited && threshold > 0) {
+      setThresholdInput(Number(threshold.toFixed(3)));
+    }
+  }, [threshold, thresholdEdited]);
+
+  useEffect(() => {
+    let active = true;
+
+    apiClient
+      .getStreamConfig()
+      .then((config) => {
+        if (active) {
+          setStreamIntervalMs(config.interval_ms);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleThresholdUpdate() {
+    setControlBusy('threshold');
+    setControlError(null);
+    setControlNotice(null);
+
+    try {
+      const safeThreshold = Number(thresholdInput.toFixed(6));
+      await apiClient.updateThreshold(safeThreshold, true);
+      setThresholdEdited(false);
+      setControlNotice('Threshold updated successfully.');
+    } catch (updateError) {
+      const message = updateError instanceof Error ? updateError.message : 'Failed to update threshold.';
+      setControlError(message);
+    } finally {
+      setControlBusy(null);
+    }
+  }
+
+  async function handleSpeedUpdate() {
+    setControlBusy('speed');
+    setControlError(null);
+    setControlNotice(null);
+
+    try {
+      const config = await apiClient.updateStreamConfig(streamIntervalMs);
+      setStreamIntervalMs(config.interval_ms);
+      setControlNotice(`Live sequence speed set to ${config.frames_per_second.toFixed(2)} frames/sec.`);
+    } catch (updateError) {
+      const message = updateError instanceof Error ? updateError.message : 'Failed to update sequence speed.';
+      setControlError(message);
+    } finally {
+      setControlBusy(null);
+    }
+  }
 
   const averageScore = useMemo(() => {
     if (points.length === 0) {
@@ -135,12 +201,12 @@ export function DashboardPage() {
             <div className="relative mt-4 h-72 w-full border-b border-l border-outline-variant/30">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={points.length > 0 ? points : [{ time: '--:--:--', score: 0, attackScore: null, threshold: 0, id: 0, label: 'NORMAL', attackType: null }]}> 
-                  <CartesianGrid strokeDasharray="3 3" stroke="#dfe3e6" />
-                  <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#74777d' }} minTickGap={22} stroke="#c4c6cd" />
-                  <YAxis tick={{ fontSize: 10, fill: '#74777d' }} stroke="#c4c6cd" domain={[0, 1]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#d7dee8" />
+                  <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#5f6773' }} minTickGap={22} stroke="#d7dee8" />
+                  <YAxis tick={{ fontSize: 10, fill: '#5f6773' }} stroke="#d7dee8" domain={[0, 1]} />
                   <Tooltip />
                   <ReferenceLine y={threshold || 0.75} stroke="#ba1a1a" strokeDasharray="6 4" />
-                  <Line type="monotone" dataKey="score" stroke="#00677f" strokeWidth={2.5} dot={false} isAnimationActive />
+                  <Line type="monotone" dataKey="score" stroke="#2A73CC" strokeWidth={2.5} dot={false} isAnimationActive />
                   <Line
                     type="monotone"
                     dataKey="attackScore"
@@ -230,6 +296,66 @@ export function DashboardPage() {
           </div>
 
           <div className="col-span-12 flex flex-col gap-6 lg:col-span-3">
+            <div className="rounded-xl bg-surface-container-lowest p-6">
+              <h3 className="mb-4 font-headline text-sm font-bold text-primary">Detection Controls</h3>
+
+              <div className="space-y-5">
+                <div>
+                  <div className="mb-2 flex items-center justify-between text-xs text-on-surface-variant">
+                    <span>Threshold</span>
+                    <span className="font-mono text-primary">{thresholdInput.toFixed(3)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.5}
+                    max={8}
+                    step={0.01}
+                    value={thresholdInput || threshold || 0.5}
+                    onChange={(event) => {
+                      setThresholdEdited(true);
+                      setThresholdInput(Number(event.target.value));
+                    }}
+                    className="w-full accent-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleThresholdUpdate}
+                    disabled={controlBusy !== null || thresholdInput <= 0}
+                    className="mt-3 w-full rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {controlBusy === 'threshold' ? 'Updating Threshold...' : 'Apply Threshold'}
+                  </button>
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between text-xs text-on-surface-variant">
+                    <span>Sequence Analysis Speed</span>
+                    <span className="font-mono text-primary">{(1000 / streamIntervalMs).toFixed(2)} fps</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={200}
+                    max={2000}
+                    step={50}
+                    value={streamIntervalMs}
+                    onChange={(event) => setStreamIntervalMs(Number(event.target.value))}
+                    className="w-full accent-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSpeedUpdate}
+                    disabled={controlBusy !== null}
+                    className="mt-3 w-full rounded-lg border border-primary/20 bg-surface px-3 py-2 text-xs font-bold text-primary transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {controlBusy === 'speed' ? 'Applying Speed...' : 'Apply Speed'}
+                  </button>
+                </div>
+
+                {controlNotice ? <p className="text-xs font-medium text-secondary">{controlNotice}</p> : null}
+                {controlError ? <p className="text-xs font-medium text-error">{controlError}</p> : null}
+              </div>
+            </div>
+
             <div className="flex-grow rounded-xl bg-surface-container-lowest p-6">
               <h3 className="mb-4 font-headline text-sm font-bold text-primary">Score Distribution</h3>
               <div className="flex h-32 w-full items-end gap-1">

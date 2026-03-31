@@ -1,6 +1,6 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { apiClient, type PredictionResponse } from '../api/client';
-import { useLiveStream } from '../hooks/useLiveStream';
+import { useLiveStreamContext } from '../context/LiveStreamContext';
 import { ConsoleLayout } from '../layout/ConsoleLayout';
 
 function parseSequenceInput(text: string): string[] {
@@ -12,11 +12,12 @@ function parseSequenceInput(text: string): string[] {
 
 export function AnalyzePage() {
   const [sequenceText, setSequenceText] = useState('');
+  const [analysisMode, setAnalysisMode] = useState<'fast' | 'detailed'>('fast');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PredictionResponse | null>(null);
 
-  const { points } = useLiveStream();
+  const { points } = useLiveStreamContext();
   const tokens = useMemo(() => parseSequenceInput(sequenceText), [sequenceText]);
 
   const feedRows = useMemo(() => {
@@ -44,7 +45,7 @@ export function AnalyzePage() {
     setLoading(true);
 
     try {
-      const prediction = await apiClient.predict(tokens, true);
+      const prediction = await apiClient.predict(tokens, analysisMode === 'detailed');
       setResult(prediction);
     } catch (submitError) {
       const message = submitError instanceof Error ? submitError.message : 'Prediction failed.';
@@ -150,7 +151,29 @@ export function AnalyzePage() {
                   <h2 className="font-headline text-xl font-bold text-primary">Sequence Analyzer</h2>
                   <p className="text-sm text-on-surface-variant">Simulate a single CAN Bus payload for threat analysis.</p>
                 </div>
-                <span className="rounded bg-secondary-fixed px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-secondary">Experimental</span>
+                <div className="flex items-center gap-3">
+                  <span className="rounded bg-secondary-fixed px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-secondary">Experimental</span>
+                  <div className="flex overflow-hidden rounded-lg border border-outline-variant bg-surface">
+                    <button
+                      type="button"
+                      onClick={() => setAnalysisMode('fast')}
+                      className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${
+                        analysisMode === 'fast' ? 'bg-primary text-white' : 'text-on-surface-variant hover:bg-surface-container-low'
+                      }`}
+                    >
+                      Fast
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAnalysisMode('detailed')}
+                      className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${
+                        analysisMode === 'detailed' ? 'bg-primary text-white' : 'text-on-surface-variant hover:bg-surface-container-low'
+                      }`}
+                    >
+                      Detailed
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
@@ -174,6 +197,9 @@ export function AnalyzePage() {
                       {loading ? 'Predicting...' : 'Predict'}
                     </button>
                   </div>
+                  <p className="text-[11px] text-on-surface-variant">
+                    Mode: <span className="font-semibold text-primary">{analysisMode === 'fast' ? 'Fast (lower response overhead)' : 'Detailed (full diagnostics)'}</span>
+                  </p>
                   {error ? <p className="text-sm font-medium text-error">{error}</p> : null}
                 </form>
 

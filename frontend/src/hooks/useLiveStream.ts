@@ -21,6 +21,7 @@ export type AlertItem = {
 
 const MAX_POINTS = 90;
 const MAX_ALERTS = 10;
+const RECONNECT_DELAY_MS = 1500;
 
 export function useLiveStream() {
   const [points, setPoints] = useState<LivePoint[]>([]);
@@ -35,76 +36,98 @@ export function useLiveStream() {
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    const ws = new WebSocket(apiClient.getWebSocketUrl());
-    wsRef.current = ws;
+    let disposed = false;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-    ws.onopen = () => {
-      setConnected(true);
-      setError(null);
-    };
+    const connect = () => {
+      if (disposed) {
+        return;
+      }
 
-    ws.onclose = () => {
-      setConnected(false);
-    };
+      const ws = new WebSocket(apiClient.getWebSocketUrl());
+      wsRef.current = ws;
 
-    ws.onerror = () => {
-      setError('Live stream connection failed. Check backend availability.');
-    };
+      ws.onopen = () => {
+        setConnected(true);
+        setError(null);
+      };
 
-    ws.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data) as LivePayload;
+      ws.onclose = () => {
+        setConnected(false);
 
-        if (typeof payload.score !== 'number') {
-          return;
+        if (!disposed) {
+          reconnectTimer = setTimeout(() => {
+            connect();
+          }, RECONNECT_DELAY_MS);
         }
+      };
 
-        idCounter.current += 1;
-        const time = new Date(payload.timestamp).toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        });
+      ws.onerror = () => {
+        setError('Live stream connection failed. Reconnecting...');
+        ws.close();
+      };
 
-        const point: LivePoint = {
-          id: idCounter.current,
-          time,
-          score: payload.score,
-          threshold: payload.threshold,
-          label: payload.label,
-          attackType: payload.attack_type ?? null,
-          attackScore: payload.label === 'ATTACK' ? payload.score : null,
-        };
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data) as LivePayload;
 
-        setThreshold(payload.threshold);
-        setTotalAnalyzed((prev) => prev + 1);
-        if (payload.label === 'ATTACK') {
-          setAttacksDetected((prev) => prev + 1);
-        }
+          if (typeof payload.score !== 'number') {
+            return;
+          }
 
-        setPoints((prev) => {
-          const updated = [...prev, point];
-          return updated.slice(Math.max(0, updated.length - MAX_POINTS));
-        });
+          idCounter.current += 1;
+          const time = new Date(payload.timestamp).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          });
 
-        if (payload.label === 'ATTACK') {
-          const alert: AlertItem = {
-            id: point.id,
+          const point: LivePoint = {
+            id: idCounter.current,
             time,
             score: payload.score,
-            attackType: payload.attack_type ?? 'Unknown',
-            confidence: payload.confidence ?? 0,
+            threshold: payload.threshold,
+            label: payload.label,
+            attackType: payload.attack_type ?? null,
+            attackScore: payload.label === 'ATTACK' ? payload.score : null,
           };
 
-          setAlerts((prev) => [alert, ...prev].slice(0, MAX_ALERTS));
+          setThreshold(payload.threshold);
+          setTotalAnalyzed((prev) => prev + 1);
+          if (payload.label === 'ATTACK') {
+            setAttacksDetected((prev) => prev + 1);
+          }
+
+          setPoints((prev) => {
+            const updated = [...prev, point];
+            return updated.slice(Math.max(0, updated.length - MAX_POINTS));
+          });
+
+          if (payload.label === 'ATTACK') {
+            const alert: AlertItem = {
+              id: point.id,
+              time,
+              score: payload.score,
+              attackType: payload.attack_type ?? 'Unknown',
+              confidence: payload.confidence ?? 0,
+            };
+
+            setAlerts((prev) => [alert, ...prev].slice(0, MAX_ALERTS));
+          }
+        } catch {
+          setError('Received malformed live stream message.');
         }
-      } catch {
-        setError('Received malformed live stream message.');
-      }
+      };
     };
 
+    connect();
+
     return () => {
-      ws.close();
+      disposed = true;
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
+      wsRef.current?.close();
     };
   }, []);
 

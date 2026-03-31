@@ -13,8 +13,8 @@ Complete instructions for running your CAN Bus Intrusion Detection System dashbo
 ### Terminal 1: Start Backend API
 
 ```bash
-cd c:/Users/Rushikesh/PROJECTS/can_bus_ids_project
-python -m uvicorn src.api:app --host 0.0.0.0 --port 8000
+cd E:/PROJECTS/can_bus_ids_project
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
 Wait for:
@@ -25,7 +25,7 @@ Wait for:
 ### Terminal 2: Start Frontend Dashboard
 
 ```bash
-cd c:/Users/Rushikesh/PROJECTS/can_bus_ids_project/frontend
+cd E:/PROJECTS/can_bus_ids_project/frontend
 npm run dev
 ```
 

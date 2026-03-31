@@ -58,6 +58,22 @@ export type ReportsManifest = {
   };
 };
 
+export type ThresholdConfig = {
+  threshold: number;
+  [key: string]: unknown;
+};
+
+export type ThresholdUpdateResponse = {
+  threshold: number;
+  persisted: boolean;
+  threshold_data: Record<string, unknown>;
+};
+
+export type StreamConfigResponse = {
+  interval_ms: number;
+  frames_per_second: number;
+};
+
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     headers: {
@@ -83,7 +99,18 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
 export const apiClient = {
   getHealth: () => requestJson<HealthResponse>('/health'),
   getStats: () => requestJson<StatsResponse>('/stats'),
-  getThreshold: () => requestJson<Record<string, unknown>>('/threshold'),
+  getThreshold: () => requestJson<ThresholdConfig>('/threshold'),
+  updateThreshold: (threshold: number, persist = true) =>
+    requestJson<ThresholdUpdateResponse>('/threshold', {
+      method: 'POST',
+      body: JSON.stringify({ threshold, persist }),
+    }),
+  getStreamConfig: () => requestJson<StreamConfigResponse>('/stream/config'),
+  updateStreamConfig: (intervalMs: number) =>
+    requestJson<StreamConfigResponse>('/stream/config', {
+      method: 'POST',
+      body: JSON.stringify({ interval_ms: intervalMs }),
+    }),
   getVocabSize: () => requestJson<{ vocab_size: number }>('/vocab/size'),
   getReportsManifest: () => requestJson<ReportsManifest>('/reports/manifest'),
   predict: (sequence: string[], returnDetails = true) =>

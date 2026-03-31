@@ -231,6 +231,42 @@ export function PipelinePage() {
             </div>
           </div>
         </section>
+
+        <section className="mb-16 rounded-2xl border border-outline-variant/20 bg-surface-container-low p-8 md:p-10">
+          <div className="mb-8 flex items-center justify-between gap-4">
+            <h3 className="font-headline text-2xl font-bold text-primary">Full Model Pipeline (End-to-End)</h3>
+            <span className="rounded-full bg-secondary-fixed px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-secondary">
+              Production Flow
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-8">
+            {[
+              ['1', 'Capture', 'CAN frames collected from live bus telemetry'],
+              ['2', 'Normalize', 'Hex ID cleanup and canonical formatting'],
+              ['3', 'Window', '64-frame rolling sequence construction'],
+              ['4', 'Encode', 'DistilBERT contextual embedding + scoring'],
+              ['5', 'Gate', 'Threshold comparison (Normal vs Attack)'],
+              ['6', 'Classify', 'Random Forest attack-type decision'],
+              ['7', 'Publish', 'REST/WebSocket payload emission'],
+              ['8', 'Visualize', 'Dashboard plots, logs, and reports'],
+            ].map(([step, title, desc]) => (
+              <div key={title} className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-4">
+                <div className="mb-2 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-2 text-xs font-bold text-white">
+                  {step}
+                </div>
+                <h4 className="mb-1 text-sm font-bold text-primary">{title}</h4>
+                <p className="text-xs leading-relaxed text-on-surface-variant">{desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 rounded-xl bg-surface-container-lowest p-4">
+            <p className="font-mono text-xs text-on-surface-variant">
+              Decision rule: score {'>'} threshold {'=>'} ATTACK, else NORMAL. If ATTACK, stage-2 multiclass inference identifies DoS/Fuzzy/Gear/RPM.
+            </p>
+          </div>
+        </section>
       </main>
     </ConsoleLayout>
   );

@@ -114,6 +114,15 @@ class BatchPredictResponse(BaseModel):
     predictions: List[PredictResponse]
 
 
+class ThresholdUpdateRequest(BaseModel):
+    threshold: float = Field(..., gt=0.0, le=20.0)
+    persist: bool = Field(default=True)
+
+
+class StreamConfigUpdateRequest(BaseModel):
+    interval_ms: int = Field(..., ge=100, le=5000)
+
+
 @dataclass
 class RuntimeState:
     model: Optional[DistilBertForMaskedLM] = None
@@ -123,6 +132,7 @@ class RuntimeState:
     rf_meta: Dict[str, Any] = field(default_factory=dict)
     demo_sequences: Optional[torch.Tensor] = None
     demo_index: int = 0
+    stream_interval_ms: int = 650
     loaded: bool = False
 
 
@@ -183,6 +193,11 @@ def ensure_exists(path: Path, description: str) -> None:
 def load_json(path: Path) -> Dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def save_threshold_data(path: Path, payload: Dict[str, Any]) -> None:
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
 
 
 def normalize_can_id(raw: str) -> str:
@@ -545,6 +560,47 @@ async def get_threshold() -> Dict[str, Any]:
     return runtime_state.threshold_data
 
 
+@app.post("/threshold")
+async def update_threshold(payload: ThresholdUpdateRequest) -> Dict[str, Any]:
+    if not runtime_state.loaded:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Model not loaded")
+
+    runtime_state.threshold_data["threshold"] = float(payload.threshold)
+    runtime_state.threshold_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    if payload.persist:
+        try:
+            save_threshold_data(THRESHOLD_PATH, runtime_state.threshold_data)
+        except OSError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to persist threshold: {exc}",
+            ) from exc
+
+    return {
+        "threshold": runtime_state.threshold_data["threshold"],
+        "persisted": payload.persist,
+        "threshold_data": runtime_state.threshold_data,
+    }
+
+
+@app.get("/stream/config")
+async def get_stream_config() -> Dict[str, Any]:
+    return {
+        "interval_ms": runtime_state.stream_interval_ms,
+        "frames_per_second": round(1000.0 / runtime_state.stream_interval_ms, 3),
+    }
+
+
+@app.post("/stream/config")
+async def update_stream_config(payload: StreamConfigUpdateRequest) -> Dict[str, Any]:
+    runtime_state.stream_interval_ms = int(payload.interval_ms)
+    return {
+        "interval_ms": runtime_state.stream_interval_ms,
+        "frames_per_second": round(1000.0 / runtime_state.stream_interval_ms, 3),
+    }
+
+
 @app.get("/vocab/size")
 async def get_vocab_size() -> Dict[str, int]:
     if not runtime_state.loaded:
@@ -671,7 +727,7 @@ async def ws_live(websocket: WebSocket) -> None:
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
             await websocket.send_json(payload)
-            await asyncio.sleep(1.0)
+            await asyncio.sleep(runtime_state.stream_interval_ms / 1000.0)
     except WebSocketDisconnect:
         return
     except Exception as exc:
