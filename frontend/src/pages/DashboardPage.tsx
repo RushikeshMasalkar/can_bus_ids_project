@@ -3,6 +3,7 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Too
 import { apiClient } from '../api/client';
 import { useLiveStreamContext } from '../context/LiveStreamContext';
 import { ConsoleLayout } from '../layout/ConsoleLayout';
+import { AdvancedAnalytics } from '../components/AdvancedAnalytics';
 
 const DONUT_COLORS = ['#2A73CC', '#1F5FA8', '#4E89D6', '#7AA8E2', '#A7C7ED'];
 const FALLBACK_TYPES = ['DoS', 'Fuzzy', 'Gear', 'RPM'];
@@ -133,7 +134,7 @@ export function DashboardPage() {
       <div className="mx-auto max-w-[1440px] p-8">
         <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-5">
           <div className="flex flex-col justify-between rounded-xl bg-surface-container-lowest p-5">
-            <span className="font-headline text-xs font-bold uppercase tracking-wider text-on-surface-variant/70">Total Analyzed</span>
+            <span className="font-headline text-xs font-bold uppercase tracking-wider text-on-surface-variant/70">Sequences Evaluated</span>
             <div className="mt-2 flex items-end justify-between">
               <span className="font-headline text-2xl font-bold text-primary">{totalAnalyzed.toLocaleString()}</span>
               <div className="flex h-6 w-16 items-end gap-0.5 rounded-sm bg-tertiary-fixed-dim/20 px-1">
@@ -145,7 +146,7 @@ export function DashboardPage() {
           </div>
 
           <div className="flex flex-col justify-between rounded-xl border-l-4 border-error bg-surface-container-lowest p-5">
-            <span className="font-headline text-xs font-bold uppercase tracking-wider text-on-surface-variant/70">Attacks Detected</span>
+            <span className="font-headline text-xs font-bold uppercase tracking-wider text-on-surface-variant/70">Intrusions Identified</span>
             <div className="mt-2 flex items-center justify-between">
               <span className="font-headline text-2xl font-bold text-error">{attacksDetected}</span>
               <div className={`h-3 w-3 rounded-full ${attacksDetected > 0 ? 'pulse-red bg-error' : 'bg-secondary'}`} />
@@ -153,7 +154,7 @@ export function DashboardPage() {
           </div>
 
           <div className="flex flex-col justify-between rounded-xl bg-surface-container-lowest p-5">
-            <span className="font-headline text-xs font-bold uppercase tracking-wider text-on-surface-variant/70">Detection Rate</span>
+            <span className="font-headline text-xs font-bold uppercase tracking-wider text-on-surface-variant/70">True Positive Detection Ratio</span>
             <div className="mt-2">
               <span className="font-headline text-2xl font-bold text-primary">{detectionRate.toFixed(2)}%</span>
               <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-surface-container-high">
@@ -163,7 +164,7 @@ export function DashboardPage() {
           </div>
 
           <div className="flex flex-col justify-between rounded-xl bg-surface-container-lowest p-5">
-            <span className="font-headline text-xs font-bold uppercase tracking-wider text-on-surface-variant/70">Avg. Anomaly Score</span>
+            <span className="font-headline text-xs font-bold uppercase tracking-wider text-on-surface-variant/70">Mean Reconstruction Loss (ρ̄)</span>
             <div className="mt-2">
               <span className="font-mono text-2xl text-primary">{averageScore.toFixed(3)}</span>
               <p className="text-[10px] font-bold text-on-tertiary-container">Threshold {threshold.toFixed(3)}</p>
@@ -172,7 +173,7 @@ export function DashboardPage() {
 
           <div className="relative flex flex-col justify-between overflow-hidden rounded-xl bg-primary p-5 text-on-primary">
             <div className="absolute -mr-12 -mt-12 h-24 w-24 rounded-full bg-white/5" />
-            <span className="font-headline text-xs font-bold uppercase tracking-wider opacity-60">System Status</span>
+            <span className="font-headline text-xs font-bold uppercase tracking-wider opacity-60">Inference Engine Status</span>
             <div className="mt-2 flex items-center gap-2">
               <div
                 className={`h-2.5 w-2.5 rounded-full ${connected ? 'bg-tertiary-fixed shadow-[0_0_10px_rgba(137,245,231,0.6)]' : 'bg-error'}`}
@@ -185,15 +186,15 @@ export function DashboardPage() {
         <div className="bento-grid">
           <div className="col-span-12 min-h-[400px] rounded-xl bg-surface-container-lowest p-6 lg:col-span-8">
             <div className="mb-6 flex items-center justify-between">
-              <h3 className="font-headline text-lg font-bold text-primary">Real-time Anomaly Score</h3>
+              <h3 className="font-headline text-lg font-bold text-primary">Real-Time Per-Sequence Normalized Cross-Entropy Anomaly Scores</h3>
               <div className="flex gap-2">
                 <span className="flex items-center gap-1.5 text-xs font-medium text-on-surface-variant">
                   <span className="h-2 w-2 rounded-full bg-secondary" />
-                  Live Stream
+                  Continuous Telemetry Stream
                 </span>
                 <span className="flex items-center gap-1.5 text-xs font-medium text-on-surface-variant">
                   <span className="h-2 w-2 rounded-full bg-error" />
-                  Attack Threshold
+                  Dynamic Threshold Gate (τ)
                 </span>
               </div>
             </div>
@@ -221,7 +222,7 @@ export function DashboardPage() {
           </div>
 
           <div className="col-span-12 flex flex-col rounded-xl bg-surface-container-lowest p-6 lg:col-span-4">
-            <h3 className="mb-6 font-headline text-lg font-bold text-primary">Attack Vector Distribution</h3>
+            <h3 className="mb-6 font-headline text-lg font-bold text-primary">Attack Category Distribution (Stage-2 Classification)</h3>
             <div className="relative flex flex-grow items-center justify-center">
               <div className="relative h-48 w-48 rounded-full" style={{ background: donutGradient }}>
                 <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-surface-container-lowest" />
@@ -246,9 +247,9 @@ export function DashboardPage() {
 
           <div className="col-span-12 rounded-xl bg-surface-container-lowest p-6 lg:col-span-9">
             <div className="mb-6 flex items-center justify-between">
-              <h3 className="font-headline text-lg font-bold text-primary">Recent Security Alerts</h3>
-              <button className="text-xs font-bold uppercase tracking-widest text-secondary hover:underline" type="button">
-                View All Logs
+              <h3 className="font-headline text-lg font-bold text-primary">Real-Time Threat Intelligence Log</h3>
+              <button className="text-xs font-bold uppercase tracking-widest text-secondary hover:underline" type="button" aria-label="View complete threat audit trail">
+                View Complete Audit Trail
               </button>
             </div>
 
@@ -267,7 +268,7 @@ export function DashboardPage() {
                   {alerts.length === 0 ? (
                     <tr>
                       <td className="px-4 py-6 text-sm text-on-surface-variant" colSpan={5}>
-                        No alerts in the live stream yet.
+                        No anomalous sequences have been flagged in the active telemetry stream.
                       </td>
                     </tr>
                   ) : (
@@ -297,7 +298,7 @@ export function DashboardPage() {
 
           <div className="col-span-12 flex flex-col gap-6 lg:col-span-3">
             <div className="rounded-xl bg-surface-container-lowest p-6">
-              <h3 className="mb-4 font-headline text-sm font-bold text-primary">Detection Controls</h3>
+              <h3 className="mb-4 font-headline text-sm font-bold text-primary">Operator Configuration Console</h3>
 
               <div className="space-y-5">
                 <div>
@@ -357,7 +358,7 @@ export function DashboardPage() {
             </div>
 
             <div className="flex-grow rounded-xl bg-surface-container-lowest p-6">
-              <h3 className="mb-4 font-headline text-sm font-bold text-primary">Score Distribution</h3>
+              <h3 className="mb-4 font-headline text-sm font-bold text-primary">Anomaly Score Probability Distribution</h3>
               <div className="flex h-32 w-full items-end gap-1">
                 {(scoreDistribution.length > 0 ? scoreDistribution : new Array(8).fill(null).map((_, idx) => ({ bin: `${idx}`, count: 0 }))).map((bar, idx) => {
                   const height = Math.max(5, (bar.count / maxHistogramCount) * 100);
@@ -373,7 +374,7 @@ export function DashboardPage() {
             </div>
 
             <div className="rounded-xl bg-primary p-6 text-on-primary">
-              <h3 className="mb-4 border-b border-white/10 pb-2 font-headline text-sm font-bold">System Health</h3>
+              <h3 className="mb-4 border-b border-white/10 pb-2 font-headline text-sm font-bold">Infrastructure Health Monitor</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs opacity-70">Backend</span>
@@ -401,6 +402,10 @@ export function DashboardPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="mx-auto max-w-[1440px] px-8 pb-8">
+          <AdvancedAnalytics />
         </div>
       </div>
     </ConsoleLayout>

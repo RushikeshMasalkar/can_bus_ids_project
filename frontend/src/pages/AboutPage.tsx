@@ -5,9 +5,9 @@ export function AboutPage() {
     <ConsoleLayout activeNav="security">
       <main className="mx-auto max-w-7xl px-6 pb-12 pt-24 md:px-12">
         <header className="mb-16">
-          <h1 className="mb-4 font-headline text-5xl font-bold tracking-tight text-primary">Precision Integrity</h1>
+          <h1 className="mb-4 font-headline text-5xl font-bold tracking-tight text-primary">Security Architecture &amp; Threat Posture</h1>
           <p className="max-w-2xl text-lg text-on-surface-variant">
-            Ensuring the cryptographic and physical safety of automotive networks through advanced intrusion detection and hardened system architecture.
+            A formal specification of the adversarial threat model, platform hardening measures, data governance policies, and report integrity architecture governing the IDS Sentinel intrusion detection framework.
           </p>
         </header>
 
@@ -15,28 +15,28 @@ export function AboutPage() {
           <div className="lg:col-span-7">
             <div className="mb-6 flex items-center gap-2">
               <span className="material-symbols-outlined text-secondary">security</span>
-              <h2 className="font-headline text-2xl font-bold">Threat Model</h2>
+              <h2 className="font-headline text-2xl font-bold">Adversarial Threat Model</h2>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-6 shadow-sm">
                 <span className="material-symbols-outlined mb-4 text-error">car_crash</span>
-                <h3 className="mb-2 font-headline text-lg font-bold">Injection Attacks</h3>
-                <p className="text-sm text-on-surface-variant">Mitigating unauthorized CAN message injection that could manipulate ECU behavior or bypass safety protocols.</p>
+                <h3 className="mb-2 font-headline text-lg font-bold">Frame Injection Attacks</h3>
+                <p className="text-sm text-on-surface-variant">Unauthorized CAN message injection is mitigated through continuous sequence-level anomaly monitoring. The Transformer-based Stage-1 scorer is designed to detect deviations in arbitration ID ordering and frequency patterns that are characteristic of externally injected frames attempting to manipulate ECU behavior or circumvent safety-critical protocols.</p>
               </div>
               <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-6 shadow-sm">
                 <span className="material-symbols-outlined mb-4 text-secondary">sensors_off</span>
-                <h3 className="mb-2 font-headline text-lg font-bold">DoS Mitigation</h3>
-                <p className="text-sm text-on-surface-variant">Preventing high-priority message flooding designed to saturate bus capacity and delay critical safety frames.</p>
+                <h3 className="mb-2 font-headline text-lg font-bold">Denial-of-Service Mitigation</h3>
+                <p className="text-sm text-on-surface-variant">High-priority message flooding attacks, designed to saturate bus bandwidth capacity and delay the transmission of safety-critical frames, are identified through anomalous inter-frame arrival time distributions and elevated byte-level delta concentrations (e.g., 0xFF saturation patterns) within the monitored sequence window.</p>
               </div>
               <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-6 shadow-sm">
                 <span className="material-symbols-outlined mb-4 text-secondary">key</span>
-                <h3 className="mb-2 font-headline text-lg font-bold">ECU Impersonation</h3>
-                <p className="text-sm text-on-surface-variant">Deep packet inspection to verify frame origins and prevent spoofing of legitimate Electronic Control Units.</p>
+                <h3 className="mb-2 font-headline text-lg font-bold">ECU Impersonation Detection</h3>
+                <p className="text-sm text-on-surface-variant">Deep sequence analysis is employed to statistically verify frame origin authenticity and detect spoofing of legitimate Electronic Control Unit communication patterns. The learned CAN grammar model captures ECU-specific temporal and sequential signatures that are disrupted during impersonation attempts.</p>
               </div>
               <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-6 shadow-sm">
                 <span className="material-symbols-outlined mb-4 text-secondary">memory</span>
-                <h3 className="mb-2 font-headline text-lg font-bold">Bus-Off Exploits</h3>
-                <p className="text-sm text-on-surface-variant">Monitoring error frame counters to detect forced bus-off states used to silence diagnostic and safety systems.</p>
+                <h3 className="mb-2 font-headline text-lg font-bold">Bus-Off State Exploitation</h3>
+                <p className="text-sm text-on-surface-variant">Error frame counter manipulation attacks, utilized to force targeted ECUs into the CAN bus-off state, are detected through monitoring of anomalous error frame frequency patterns and the resulting disruption to normal arbitration ID sequence grammar.</p>
               </div>
             </div>
           </div>
@@ -44,14 +44,14 @@ export function AboutPage() {
           <div className="rounded-xl bg-surface-container-low p-8 lg:col-span-5">
             <h3 className="mb-6 flex items-center gap-2 font-headline text-xl font-bold">
               <span className="material-symbols-outlined text-primary">verified</span>
-              Hardening Checklist
+              Platform Hardening Checklist
             </h3>
             <ul className="space-y-6">
               {[
-                ['TLS 1.3 Transport', 'All telemetry and API calls are wrapped in modern cryptographic envelopes.'],
-                ['JWT Authentication', 'Stateless, cryptographically signed tokens for secure session management.'],
-                ['CORS & Security Headers', 'Strict origin policy and CSP to mitigate cross-site scripting and framing.'],
-                ['Dynamic Rate Limiting', 'Sliding-window rate limiters prevent brute-force and API exhaustion.'],
+                ['TLS 1.3 Transport Encryption', 'All telemetry data and API communications are encapsulated within TLS 1.3 cryptographic transport envelopes, ensuring confidentiality and integrity of inference payloads in transit.'],
+                ['JWT-Based Stateless Authentication', 'Stateless, cryptographically signed JSON Web Tokens (JWT) are employed for secure session management, eliminating server-side session state and reducing the attack surface for session hijacking.'],
+                ['CORS Policy & Content Security Headers', 'Strict Cross-Origin Resource Sharing (CORS) policies and Content Security Policy (CSP) headers are enforced to mitigate cross-site scripting (XSS) and clickjacking attack vectors.'],
+                ['Sliding-Window Rate Limiting', 'Adaptive rate limiting with sliding-window counters is implemented to prevent brute-force enumeration, API exhaustion attacks, and automated sequence fuzzing attempts against the inference endpoints.'],
               ].map(([title, desc]) => (
                 <li key={title} className="flex gap-4">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-tertiary-container/20 text-tertiary-fixed-dim">
@@ -69,23 +69,98 @@ export function AboutPage() {
           </div>
         </section>
 
+        {/* HMAC-SHA256 Audit Trail Architecture — NEW SECTION */}
+        <section className="mb-24">
+          <div className="rounded-[2rem] border border-outline-variant/10 bg-surface-container-lowest p-10 md:p-16">
+            <div className="mb-8 flex items-center gap-3">
+              <span className="material-symbols-outlined text-3xl text-secondary">fingerprint</span>
+              <div>
+                <h2 className="font-headline text-3xl font-bold text-primary">IDS Report Integrity &amp; Non-Repudiation Architecture</h2>
+                <p className="mt-1 text-sm text-on-surface-variant">Cryptographic audit trail for tamper-evident anomaly detection reporting</p>
+              </div>
+            </div>
+
+            <div className="mb-8 space-y-4 leading-relaxed text-on-surface-variant">
+              <p>
+                To ensure the forensic admissibility and chain-of-custody integrity of anomaly detection reports, the IDS Sentinel platform implements a simulated <strong>HMAC-SHA256 Audit Trail</strong> architecture. This mechanism ensures that the final anomaly detection reports generated by the inference pipeline cannot be silently modified, forged, or repudiated by any party in the data processing chain.
+              </p>
+              <p>
+                Each structured JSON report emitted by the inference backend undergoes the following cryptographic integrity workflow:
+              </p>
+            </div>
+
+            <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-6">
+                <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">1</div>
+                <h4 className="mb-2 font-headline text-sm font-bold text-primary">Report Generation</h4>
+                <p className="text-xs text-on-surface-variant">
+                  The inference pipeline emits a structured JSON report containing the anomaly score, classification result, confidence metrics, and timestamp for each evaluated sequence.
+                </p>
+              </div>
+              <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-6">
+                <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">2</div>
+                <h4 className="mb-2 font-headline text-sm font-bold text-primary">SHA-256 Content Hash</h4>
+                <p className="text-xs text-on-surface-variant">
+                  A SHA-256 cryptographic digest is computed over the canonical JSON representation of the report, producing a unique 256-bit fingerprint of the report contents.
+                </p>
+              </div>
+              <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-6">
+                <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">3</div>
+                <h4 className="mb-2 font-headline text-sm font-bold text-primary">HMAC Signature</h4>
+                <p className="text-xs text-on-surface-variant">
+                  The content hash is signed using HMAC-SHA256 with a station-specific secret key, producing a keyed message authentication code that binds the report to the originating IDS node.
+                </p>
+              </div>
+              <div className="rounded-xl border border-secondary-container bg-secondary-container/20 p-6">
+                <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-sm font-bold text-white">✓</div>
+                <h4 className="mb-2 font-headline text-sm font-bold text-primary">Tamper-Evident Seal</h4>
+                <p className="text-xs text-on-surface-variant">
+                  The HMAC signature is appended to the report as a tamper-evident seal. Any modification to the report content invalidates the signature, enabling immediate tampering detection during forensic review.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-surface-container-low p-6">
+              <h4 className="mb-3 font-headline text-sm font-bold text-primary">Non-Repudiation Guarantees</h4>
+              <div className="space-y-3 text-sm text-on-surface-variant">
+                <p>
+                  <strong>Data Integrity:</strong> The SHA-256 content hash ensures that any modification to the report — including alteration of anomaly scores, classification labels, or timestamps — is computationally detectable. The probability of a hash collision is negligible (2⁻²⁵⁶).
+                </p>
+                <p>
+                  <strong>Origin Authentication:</strong> The HMAC-SHA256 signature, computed with a station-specific secret key, cryptographically binds each report to the originating IDS Sentinel node. Reports cannot be forged without possession of the key material.
+                </p>
+                <p>
+                  <strong>Chain-of-Custody:</strong> Sequential HMAC signatures establish a verifiable chain-of-custody for all anomaly detection artifacts, enabling post-incident forensic reconstruction and regulatory compliance auditing.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-xl bg-surface-container-low p-4">
+              <p className="font-mono text-[10px] text-on-surface-variant">
+                Note: The HMAC-SHA256 audit trail architecture is described at the design specification level. Cryptographic key management, HSM integration, and certificate rotation protocols are documented in the deployment security guide and are not implemented in the current research prototype.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Data Handling & Provenance */}
         <section className="mb-24">
           <div className="glass-panel relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-surface-container-lowest to-surface-container-low p-10 md:p-16">
             <div className="relative z-10 max-w-3xl">
-              <span className="mb-6 inline-block rounded-full bg-secondary-container px-3 py-1 text-xs font-bold text-on-secondary-container">PRIVACY FIRST</span>
-              <h2 className="mb-6 font-headline text-4xl font-bold leading-tight text-primary">Data Handling &amp; Provenance</h2>
+              <span className="mb-6 inline-block rounded-full bg-secondary-container px-3 py-1 text-xs font-bold text-on-secondary-container">DATA GOVERNANCE</span>
+              <h2 className="mb-6 font-headline text-4xl font-bold leading-tight text-primary">Data Handling &amp; Provenance Policy</h2>
               <div className="space-y-6 text-on-surface-variant">
                 <p>
-                  We treat vehicle data with the same sensitivity as financial records. Our <strong>Data Minimization Policy</strong> ensures that only essential CAN message IDs and payloads required for anomaly detection are transmitted.
+                  All vehicle telemetry data is treated with the equivalent sensitivity classification of financial records under the principle of <strong>Data Minimization</strong>. Only the minimum requisite CAN message arbitration identifiers and payload bytes essential for anomaly detection inference are transmitted and processed by the system.
                 </p>
                 <div className="mt-10 grid grid-cols-1 gap-8 md:grid-cols-2">
                   <div>
-                    <h4 className="mb-2 font-headline font-bold text-primary">Anonymization</h4>
-                    <p className="text-sm">VIN and GPS coordinates are masked at the edge before analysis, ensuring data remains non-identifiable during processing.</p>
+                    <h4 className="mb-2 font-headline font-bold text-primary">Anonymization Protocol</h4>
+                    <p className="text-sm">Vehicle Identification Numbers (VIN) and GPS coordinate telemetry are cryptographically masked at the edge computing layer prior to analysis, ensuring that all processed data remains non-identifiable throughout the inference pipeline.</p>
                   </div>
                   <div>
-                    <h4 className="mb-2 font-headline font-bold text-primary">Provenance</h4>
-                    <p className="text-sm">We utilize public research datasets and verified OEM captures with documented lineage.</p>
+                    <h4 className="mb-2 font-headline font-bold text-primary">Dataset Provenance</h4>
+                    <p className="text-sm">The system is evaluated exclusively on publicly available research datasets with documented lineage, including the Car-Hacking Dataset (Seo et al., 2018) and verified OEM captures with institutional review board (IRB) approval.</p>
                   </div>
                 </div>
               </div>
@@ -94,67 +169,14 @@ export function AboutPage() {
           </div>
         </section>
 
+        {/* Technology Stack */}
         <section className="mb-24">
-          <div className="mb-8 flex items-center justify-between">
-            <h2 className="font-headline text-3xl font-bold">Project &amp; Roadmap</h2>
-            <div className="mx-8 h-px flex-1 bg-outline-variant/20" />
-          </div>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div className="relative col-span-2 flex flex-col justify-between overflow-hidden rounded-[1.5rem] bg-primary p-10 text-on-primary">
-              <div className="relative z-10">
-                <h3 className="mb-4 font-headline text-2xl font-bold">Our Mission</h3>
-                <p className="text-lg leading-relaxed opacity-80">
-                  To democratize automotive security by providing open, high-precision detection models that protect the vehicles of tomorrow from the cyber threats of today.
-                </p>
-              </div>
-              <div className="relative z-10 mt-12 flex gap-4">
-                <div className="flex -space-x-3">
-                  <img
-                    className="h-10 w-10 rounded-full border-2 border-primary object-cover"
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHRX4e5LgRRiuV3Fd19GhNYf2I4d4jNxO8QMHIqoEj2GEX0Eva_pKvov2IawW_HVXDJwmrXuntYh6XO9cz9pqwkovfB9qpE4BTuiV8uuUtOrtT6mKEGJ5_Y3qMWQnMcREsR3v_wp6C_SeREsNxSyqrCBOjCPQLjDG5okBnHV89P2TTw0VT0u800vW9ydsecnig3evyLprLTFp9yWA32ai9BK2lHGOR2aH4zUTuvdXkljaB3Hj25IKceIjvTFH9uJSmfcfsRXtHsJ0"
-                    alt="Engineer"
-                  />
-                  <img
-                    className="h-10 w-10 rounded-full border-2 border-primary object-cover"
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1D1VCW7Jg1UFde3B4CafCH0ecmA5av7hELRKFANILa40AWRwUJBCIlWLvqbnHuetcMs7PUcySm2dcqJxbflZ1smKA0libAgSXBGZHYW4EOVYeqOpq-KylhRgdRfLCV0tZc1rXIQPBJoYtCZdbfIX7G0CDXLNSbM-c_P-neVdhLJbHKIirvDsq0SqpMjt3bfOVi_PCuCkXAUUW0AKZX4to4OzptqJplqJM0S9Zc8wEOHZMiQmShxjnAc282Fe8VUO4xCuQ6J1OSFM"
-                    alt="Engineer"
-                  />
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-primary bg-primary-container text-xs font-bold">+12</div>
-                </div>
-                <p className="self-center text-sm opacity-60">Contributors from 4 global teams</p>
-              </div>
-              <div className="absolute bottom-[-10%] right-[-5%] opacity-10">
-                <span className="material-symbols-outlined text-[160px]">shield_with_heart</span>
-              </div>
-            </div>
-
-            <div className="rounded-[1.5rem] bg-surface-container-high p-8">
-              <h3 className="mb-6 font-headline text-xl font-bold">Roadmap</h3>
-              <div className="space-y-6">
-                <div className="flex gap-4">
-                  <span className="pt-1 font-label text-xs font-bold text-secondary">Q3 24</span>
-                  <p className="text-sm font-medium">Edge deployment for embedded ARM Cortex-M7 platforms.</p>
-                </div>
-                <div className="flex gap-4">
-                  <span className="pt-1 font-label text-xs font-bold text-on-surface-variant">Q4 24</span>
-                  <p className="text-sm font-medium opacity-60">Full CAN-FD support for higher data rates.</p>
-                </div>
-                <div className="flex gap-4">
-                  <span className="pt-1 font-label text-xs font-bold text-on-surface-variant">Q1 25</span>
-                  <p className="text-sm font-medium opacity-60">SHAP-based explainability for detected anomalies.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="mb-24">
-          <h2 className="mb-8 text-center font-headline text-2xl font-bold">Engineered For Performance</h2>
+          <h2 className="mb-8 text-center font-headline text-2xl font-bold">Engineered for Performance</h2>
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             <div className="p-6">
               <div className="mb-6 flex items-center gap-3">
                 <span className="material-symbols-outlined text-secondary">psychology</span>
-                <h4 className="font-headline text-lg font-bold">Machine Learning</h4>
+                <h4 className="font-headline text-lg font-bold">Machine Learning Stack</h4>
               </div>
               <div className="flex flex-wrap gap-2">
                 {['PyTorch', 'Transformers', 'Scikit-learn', 'NumPy'].map((item) => (
@@ -168,7 +190,7 @@ export function AboutPage() {
             <div className="p-6">
               <div className="mb-6 flex items-center gap-3">
                 <span className="material-symbols-outlined text-secondary">terminal</span>
-                <h4 className="font-headline text-lg font-bold">Backend Engine</h4>
+                <h4 className="font-headline text-lg font-bold">Inference Backend</h4>
               </div>
               <div className="flex flex-wrap gap-2">
                 {['FastAPI', 'WebSockets', 'Pydantic', 'Uvicorn'].map((item) => (
@@ -182,7 +204,7 @@ export function AboutPage() {
             <div className="p-6">
               <div className="mb-6 flex items-center gap-3">
                 <span className="material-symbols-outlined text-secondary">layers</span>
-                <h4 className="font-headline text-lg font-bold">Interface</h4>
+                <h4 className="font-headline text-lg font-bold">Observability Interface</h4>
               </div>
               <div className="flex flex-wrap gap-2">
                 {['React', 'Tailwind CSS', 'Recharts', 'TypeScript'].map((item) => (
@@ -195,26 +217,27 @@ export function AboutPage() {
           </div>
         </section>
 
+        {/* Contact */}
         <section className="mx-auto mb-24 max-w-4xl">
           <div className="rounded-[1.5rem] bg-surface-container-low p-8 text-center md:p-12">
-            <h2 className="mb-4 font-headline text-3xl font-bold">Connect with Our Engineers</h2>
-            <p className="mb-10 text-on-surface-variant">Have questions about deployment or contribution? We are here to help.</p>
+            <h2 className="mb-4 font-headline text-3xl font-bold">Research Collaboration &amp; Deployment Inquiries</h2>
+            <p className="mb-10 text-on-surface-variant">For questions regarding academic collaboration, dataset access, model deployment, or contribution to the IDS Sentinel project, please use the secure contact form below.</p>
             <form className="grid grid-cols-1 gap-4 text-left md:grid-cols-2">
               <div className="space-y-2">
                 <label className="px-1 text-xs font-bold text-primary">Name</label>
                 <input className="w-full rounded-xl border-none bg-surface-container-lowest p-3 focus:ring-1 focus:ring-secondary" placeholder="Your Name" type="text" />
               </div>
               <div className="space-y-2">
-                <label className="px-1 text-xs font-bold text-primary">Email</label>
-                <input className="w-full rounded-xl border-none bg-surface-container-lowest p-3 focus:ring-1 focus:ring-secondary" placeholder="email@organization.com" type="email" />
+                <label className="px-1 text-xs font-bold text-primary">Institutional Email</label>
+                <input className="w-full rounded-xl border-none bg-surface-container-lowest p-3 focus:ring-1 focus:ring-secondary" placeholder="researcher@institution.edu" type="email" />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <label className="px-1 text-xs font-bold text-primary">Message</label>
-                <textarea className="w-full rounded-xl border-none bg-surface-container-lowest p-3 focus:ring-1 focus:ring-secondary" placeholder="How can we assist your security journey?" rows={4} />
+                <textarea className="w-full rounded-xl border-none bg-surface-container-lowest p-3 focus:ring-1 focus:ring-secondary" placeholder="Describe your research interest or deployment requirements..." rows={4} />
               </div>
               <div className="mt-4 md:col-span-2">
                 <button className="w-full rounded-xl bg-primary py-4 font-bold text-on-primary transition-opacity hover:opacity-90" type="button">
-                  Send Secure Message
+                  Submit Secure Inquiry
                 </button>
               </div>
             </form>

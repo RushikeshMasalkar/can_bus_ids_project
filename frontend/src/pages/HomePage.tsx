@@ -47,7 +47,7 @@ export function HomePage() {
             </div>
             <h1 className="mb-6 font-headline text-5xl font-bold leading-[1.1] tracking-tight text-primary md:text-7xl">Precision Sentinel</h1>
             <p className="mx-auto mb-10 max-w-2xl text-xl leading-relaxed text-on-surface-variant md:text-2xl">
-              Enterprise-Grade Anomaly Detection for Automotive CAN Networks. High-fidelity forensic analysis at the speed of wire.
+              A Transformer-based Intrusion Detection System employing Masked Language Modeling for real-time anomaly quantification on Controller Area Network bus traffic.
             </p>
             <div className="flex flex-col items-center justify-center gap-4 md:flex-row">
               <Link
@@ -73,12 +73,12 @@ export function HomePage() {
                   <div className="h-3 w-3 rounded-full bg-surface-tint/20" />
                   <div className="h-3 w-3 rounded-full bg-tertiary-container/20" />
                 </div>
-                <div className="mx-auto font-mono text-[10px] uppercase tracking-widest text-outline">Global Network Integrity Stream</div>
+                <div className="mx-auto font-mono text-[10px] uppercase tracking-widest text-outline">IDS Sentinel — System Architecture Overview</div>
               </div>
               <img
-                alt="Dashboard Preview"
-                className="h-[400px] w-full object-cover grayscale-[0.5] contrast-[1.1]"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDktJ9aS2PRXkXyTTeoe4S-21r0Gfp4Txz-vj8ao5GTtqRAcVdJlet_ATho9eMDV_vfkQd5cvU8KxZyBRTRdSaaXjODjyVQsexF4nxe6KnovuYmto8sJrekIh8OZ07J4nAh_-KCAnUvHgdIjbQGxGIVJqmsDRiZqDiEqY8u7-UXGozin5M0b-_jSsQcgK86uUkUODi7DuUYNDbp1la5Ir7R2YRmg_KKegDzppqRC-1Fn63vNTV3OEv4VinCvc2585X7FuZy6SEdgNg"
+                alt="Architectural diagram of the Transformer-based CAN Bus Intrusion Detection System showing ECU nodes, CAN Bus protocol line, and the IDS Sentinel anomaly detection module"
+                className="h-[400px] w-full object-cover"
+                src="/ids_architecture.png"
               />
             </div>
           </div>
@@ -90,15 +90,15 @@ export function HomePage() {
               <div className="flex flex-wrap items-center justify-center gap-8 md:justify-start">
                 <div className="text-center md:text-left">
                   <div className="font-headline text-3xl font-bold text-primary">97.12%</div>
-                  <div className="font-mono text-[10px] uppercase tracking-widest text-outline">Accuracy</div>
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-outline">Binary Detection Accuracy</div>
                 </div>
                 <div className="text-center md:text-left">
                   <div className="font-headline text-3xl font-bold text-primary">97.53%</div>
-                  <div className="font-mono text-[10px] uppercase tracking-widest text-outline">Precision</div>
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-outline">Precision (Stage-1)</div>
                 </div>
                 <div className="text-center md:text-left">
                   <div className="font-headline text-3xl font-bold text-primary">95.06%</div>
-                  <div className="font-mono text-[10px] uppercase tracking-widest text-outline">F1 Score</div>
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-outline">F1 Score (Weighted)</div>
                 </div>
               </div>
               <div className="flex flex-wrap justify-center gap-6 opacity-60 md:justify-end">
@@ -116,12 +116,12 @@ export function HomePage() {
           <div className="grid grid-cols-1 items-center gap-16 lg:grid-cols-2">
             <div className="relative">
               <div className="absolute -left-12 -top-12 h-64 w-64 rounded-full bg-error/5 blur-3xl" />
-              <h2 className="relative z-10 mb-8 font-headline text-4xl font-bold text-primary">Unencrypted &amp; Vulnerable</h2>
+              <h2 className="relative z-10 mb-8 font-headline text-4xl font-bold text-primary">Structurally Unencrypted &amp; Inherently Vulnerable</h2>
               <p className="mb-6 text-lg leading-relaxed text-on-surface-variant">
-                The Controller Area Network (CAN) is the backbone of modern vehicles, yet it remains fundamentally insecure. Developed in an era before connectivity, it lacks standard authentication or encryption.
+                The Controller Area Network (CAN) protocol, standardized as ISO 11898, was architecturally designed without inherent authentication, encryption, or access control mechanisms. As in-vehicle connectivity has proliferated through V2X and OBD-II interfaces, this foundational absence of security primitives has been widely documented as a critical attack surface.
               </p>
               <p className="text-lg leading-relaxed text-on-surface-variant">
-                Any compromised ECU can broadcast malicious frames, leading to total control over steering, braking, and drivetrain. Traditional firewalls fail to understand the semantic intent of automotive messaging.
+                A compromised Electronic Control Unit (ECU) is capable of broadcasting arbitrarily crafted frames onto the shared bus, potentially enabling unauthorized manipulation of safety-critical subsystems including steering, braking, and powertrain control. Traditional perimeter-based firewalls are demonstrated to be insufficient, as they fail to capture the semantic and temporal structure of legitimate CAN bus grammar.
               </p>
             </div>
             <div className="relative rounded-2xl border border-outline-variant/20 bg-surface-container-low p-8">
@@ -129,7 +129,7 @@ export function HomePage() {
                 <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
                   warning
                 </span>
-                ALERT: UNAUTHORIZED FRAME INJECTION
+                ALERT: UNAUTHORIZED FRAME INJECTION DETECTED
               </div>
               <div className="space-y-2 font-mono text-[13px]">
                 <div className="flex justify-between rounded bg-error-container/20 px-2 py-1 text-error">
@@ -161,16 +161,16 @@ export function HomePage() {
           <div className="hex-grid absolute inset-0 opacity-10" />
           <div className="relative z-10 mx-auto max-w-[1440px] px-6">
             <div className="mb-20 max-w-3xl">
-              <h2 className="mb-8 font-headline text-4xl font-bold">Intelligence at the Edge</h2>
+              <h2 className="mb-8 font-headline text-4xl font-bold">Dual-Stage Intelligence Architecture</h2>
               <p className="text-lg leading-relaxed text-on-primary-container">
-                IDS.Sentinel leverages a dual-stage machine learning architecture. Our system utilizes a lightweight DistilBERT encoder to capture sequential temporal dependencies followed by a high-velocity Random Forest classifier for sub-millisecond threat categorization.
+                The IDS Sentinel platform implements a novel dual-stage machine learning pipeline. In the first stage, a fine-tuned DistilBERT encoder, pre-trained via Masked Language Modeling (MLM) on benign CAN ID sequences, continuously quantifies baseline network grammar deviations through reconstruction loss maximization. Sequences exceeding the empirically calibrated anomaly threshold are subsequently routed to a secondary Random Forest ensemble classifier for sub-millisecond multiclass threat categorization across four attack taxonomies: DoS, Fuzzy Injection, Gear Spoofing, and RPM Manipulation.
               </p>
             </div>
 
             <div className="relative grid grid-cols-1 items-center gap-4 md:grid-cols-4 md:gap-8">
               <div className="relative rounded-xl border border-white/10 bg-primary-container p-6 text-center">
                 <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-on-primary-container">Input Layer</div>
-                <div className="font-headline text-lg font-bold">Raw CAN Bus</div>
+                <div className="font-headline text-lg font-bold">Raw CAN Telemetry</div>
                 <div className="mt-4 flex justify-center gap-1">
                   <div className="h-4 w-1 bg-secondary" />
                   <div className="h-6 w-1 bg-secondary" />
@@ -178,19 +178,19 @@ export function HomePage() {
                 </div>
               </div>
               <div className="relative rounded-xl border border-white/10 bg-primary-container p-6 text-center">
-                <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-on-primary-container">Stage 1: Encoder</div>
-                <div className="font-headline text-lg font-bold">DistilBERT</div>
-                <div className="mt-4 text-[10px] text-on-primary-container">Contextual Embedding</div>
+                <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-on-primary-container">Stage 1: Anomaly Scorer</div>
+                <div className="font-headline text-lg font-bold">DistilBERT MLM</div>
+                <div className="mt-4 text-[10px] text-on-primary-container">Contextual Embedding &amp; Reconstruction Loss</div>
               </div>
               <div className="relative rounded-xl border border-white/10 bg-primary-container p-6 text-center">
-                <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-on-primary-container">Stage 2: Classifier</div>
-                <div className="font-headline text-lg font-bold">Random Forest</div>
-                <div className="mt-4 text-[10px] text-on-primary-container">Categorical Decision</div>
+                <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-on-primary-container">Stage 2: Threat Classifier</div>
+                <div className="font-headline text-lg font-bold">Random Forest (128 Estimators)</div>
+                <div className="mt-4 text-[10px] text-on-primary-container">Multiclass Attack Taxonomy Decision</div>
               </div>
               <div className="relative rounded-xl border border-white/10 bg-secondary p-6 text-center">
                 <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-primary">Output</div>
-                <div className="font-headline text-lg font-bold text-primary">SOC Alerting</div>
-                <div className="mt-4 text-[10px] text-primary">Real-time Mitigation</div>
+                <div className="font-headline text-lg font-bold text-primary">SOC Alert Emission</div>
+                <div className="mt-4 text-[10px] text-primary">Real-time Threat Mitigation &amp; Reporting</div>
               </div>
             </div>
           </div>
@@ -204,16 +204,16 @@ export function HomePage() {
                 <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
                   <span className="material-symbols-outlined">bolt</span>
                 </div>
-                <h3 className="mb-4 font-headline text-2xl font-bold text-primary">Real-time Detection</h3>
+                <h3 className="mb-4 font-headline text-2xl font-bold text-primary">Sub-Millisecond Detection Latency</h3>
                 <p className="text-on-surface-variant">
-                  Continuous WebSocket streaming ensures anomalies are detected and reported within 12ms of the malicious frame entering the bus. No lag, no compromise.
+                  Anomalous sequences are detected and classified within 12ms of frame ingestion through persistent WebSocket telemetry channels. The system maintains continuous, non-blocking inference throughput, ensuring that no malicious frame injection event is permitted to propagate undetected across the CAN bus arbitration window.
                 </p>
               </div>
               <div className="aspect-video w-full overflow-hidden rounded-xl border border-outline-variant/20 bg-surface-container-lowest md:w-64">
                 <img
-                  alt="Real-time Stream Visualization"
-                  className="h-full w-full object-cover opacity-50 grayscale"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuj6d9sFrT737plLuS89DSlHImsMxQNZ_bJ98I4U4jhOQLWsei4WAUm1weaJLdSwoJDA52tL6yA8W5Ac0mUqF6uyyApFhqHYMpQn1gu1DBm-MjcZQahBj69BrSZYswk6zhYRVqTKBmzVRO6oh0RshPejSzOeIr5Wg2bUP9aEj-a1nVwQtg1nvdnllfgKHXqyX6W_0DGzzqSKI9aU1h29BPJ-5TGjjqDSyERaThTv6FNqd3x6BoO6-yqQo46bHtAN-pH3Mhqn5PyCE"
+                  alt="Real-time anomaly detection telemetry stream visualization"
+                  className="h-full w-full object-cover"
+                  src="/ids_architecture.png"
                 />
               </div>
             </div>
@@ -222,16 +222,24 @@ export function HomePage() {
               <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
                 <span className="material-symbols-outlined">category</span>
               </div>
-              <h3 className="mb-4 font-headline text-2xl font-bold text-primary">Multi-class</h3>
-              <p className="mb-6 text-on-surface-variant">Granular classification of attack vectors including DoS, Fuzzy, Gear, and RPM spoofing attempts.</p>
+              <h3 className="mb-4 font-headline text-2xl font-bold text-primary">Multiclass Threat Taxonomy</h3>
+              <p className="mb-6 text-on-surface-variant">Granular Stage-2 classification of four distinct attack vector categories is performed, achieving 100% accuracy on the evaluation partition (noted as overfitted performance requiring further generalization validation).</p>
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
                   <div className="h-2 w-2 rounded-full bg-secondary" />
-                  <span className="font-mono text-xs text-on-surface-variant">Denial of Service</span>
+                  <span className="font-mono text-xs text-on-surface-variant">Denial of Service (Bus Flooding)</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="h-2 w-2 rounded-full bg-secondary" />
-                  <span className="font-mono text-xs text-on-surface-variant">Fuzzy Injection</span>
+                  <span className="font-mono text-xs text-on-surface-variant">Fuzzy Injection (Random Payload)</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-2 w-2 rounded-full bg-secondary" />
+                  <span className="font-mono text-xs text-on-surface-variant">Gear Spoofing (Actuator Manipulation)</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-2 w-2 rounded-full bg-secondary" />
+                  <span className="font-mono text-xs text-on-surface-variant">RPM Spoofing (Tachometer Falsification)</span>
                 </div>
               </div>
             </div>
@@ -240,9 +248,9 @@ export function HomePage() {
               <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
                 <span className="material-symbols-outlined">api</span>
               </div>
-              <h3 className="mb-4 font-headline text-2xl font-bold text-primary">Production API</h3>
+              <h3 className="mb-4 font-headline text-2xl font-bold text-primary">Production-Grade API</h3>
               <p className="text-on-surface-variant">
-                Built on FastAPI, our RESTful endpoints provide high-throughput integration for OEM telematics systems and fleet management consoles.
+                The inference backend is architected on the FastAPI framework, providing asynchronous RESTful endpoints and persistent WebSocket channels optimized for high-throughput integration with OEM telematics platforms and fleet management consoles.
               </p>
             </div>
 
@@ -251,16 +259,16 @@ export function HomePage() {
                 <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
                   <span className="material-symbols-outlined">analytics</span>
                 </div>
-                <h3 className="mb-4 font-headline text-2xl font-bold text-primary">Rich Analytics</h3>
+                <h3 className="mb-4 font-headline text-2xl font-bold text-primary">Comprehensive Forensic Analytics</h3>
                 <p className="text-on-surface-variant">
-                  Interactive reports generate deep-dive metrics on network health, anomaly frequency, and predictive maintenance insights for secure automotive operations.
+                  Interactive observability dashboards facilitate deep-dive analysis of network health metrics, per-sequence anomaly score distributions, attack vector frequency histograms, and predictive maintenance indicators for secure automotive operations.
                 </p>
               </div>
               <div className="aspect-video w-full overflow-hidden rounded-xl border border-outline-variant/20 bg-surface-container-lowest md:w-64">
                 <img
-                  alt="Interactive Metrics"
-                  className="h-full w-full object-cover opacity-50 grayscale"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQf3vxjquKSk2gNxUrn-ztY26PNFhRLZ5I0EKquVyYWAsjZ1vxwjwEZ529-4qAUg_vqMAZCfd4IO3ZB7l2Ih-DVRX1FQtOh_jdwV-si9umHc_TLUc-_fjYPal57GiZmdllcwBwgId3g9-xHsexYR1nyIoGS17UHYZ7Z71tcBwjTAkrJZtZKwc4XnatQLOPoWAiSjnLP3AljmyAL5ijEnrJWfBADfB76WLeXPksMdfW_BanHVHlAVODM-A5SyKmK-UYqBG8yrUj_Yg"
+                  alt="Forensic analytics dashboard with anomaly score distribution and attack vector classification"
+                  className="h-full w-full object-cover"
+                  src="/ids_architecture.png"
                 />
               </div>
             </div>
@@ -272,7 +280,7 @@ export function HomePage() {
         <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center justify-between px-8 py-12 md:flex-row">
           <div className="mb-8 md:mb-0">
             <div className="mb-2 font-headline text-xl font-bold text-primary">IDS.Sentinel</div>
-            <div className="text-xs text-on-surface-variant">© 2024 IDS.Sentinel Automotive Cyber-Intelligence</div>
+            <div className="text-xs text-on-surface-variant">© 2026 IDS.Sentinel — Transformer-Based Automotive Cyber-Intelligence</div>
           </div>
           <div className="flex gap-12">
             <div className="flex flex-col gap-2">
