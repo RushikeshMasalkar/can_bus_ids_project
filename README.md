@@ -544,6 +544,17 @@ Expected response:
 }
 ```
 
+Current backend response schema (observed in `backend/main.py` runtime):
+```json
+{
+  "status": "online",
+  "model": "loaded",
+  "device": "cuda"
+}
+```
+
+If artifacts are missing, `/health` returns HTTP `503` with a descriptive `detail` message.
+
 ---
 
 ## 🔁 Full Execution Workflow
@@ -641,6 +652,14 @@ All endpoints are defined in [`backend/main.py`](backend/main.py). Base URL: `ht
 | `GET` | `/reports/manifest` | List all available report assets | — | `{reports: [filename, ...]}` |
 | `GET` | `/static/reports/{filename}` | Serve a report asset (PNG, JSON, HTML) | — | File response |
 
+### Additional Runtime Control Endpoints
+
+| Method | Path | Purpose | Request | Response |
+|:-------|:-----|:--------|:--------|:---------|
+| `POST` | `/threshold` | Update Stage 1 threshold at runtime (optional persist to disk) | `{"threshold": float, "persist": bool}` | `{threshold, persisted, threshold_data}` |
+| `GET` | `/stream/config` | Get live stream cadence | — | `{interval_ms, frames_per_second}` |
+| `POST` | `/stream/config` | Update live stream cadence | `{"interval_ms": int}` | `{interval_ms, frames_per_second}` |
+
 **`/predict` response schema:**
 
 ```json
@@ -655,9 +674,55 @@ All endpoints are defined in [`backend/main.py`](backend/main.py). Base URL: `ht
 }
 ```
 
+Current `/predict` response payload (runtime shape):
+
+```json
+{
+  "anomaly_score": 0.843,
+  "threshold": 0.612,
+  "label": "ATTACK",
+  "attack_type": "DoS",
+  "confidence": 0.91,
+  "is_attack": true,
+  "processing_time_ms": 7.42,
+  "details": {
+    "unknown_tokens": 0,
+    "unknown_ratio": 0.0,
+    "score_margin": 0.231,
+    "device": "cuda"
+  }
+}
+```
+
+Current `/reports/manifest` response payload (runtime shape):
+
+```json
+{
+  "available_files": [
+    {
+      "name": "confusion_matrix.png",
+      "url": "/static/reports/confusion_matrix.png",
+      "size_bytes": 123456
+    }
+  ],
+  "metrics": {
+    "metrics": {
+      "accuracy": 0.9712,
+      "precision": 0.9753,
+      "recall": 0.9272,
+      "f1_score": 0.9506,
+      "specificity": 0.9899
+    }
+  },
+  "multiclass_metrics": {}
+}
+```
+
 ### WebSocket — `/ws/live`
 
 Connect to `ws://localhost:8000/ws/live` for a continuous real-time inference event stream.
+
+Runtime note: in the current implementation, `/ws/live` streams replay/simulated sequence windows from preprocessed artifacts when a direct CAN capture source is not attached.
 
 **Event payload fields:**
 
@@ -728,6 +793,24 @@ All runtime paths and environment settings are managed through [`backend/config.
 | `HOST` | `0.0.0.0` | Backend bind address |
 | `PORT` | `8000` | Backend listen port |
 
+### Frontend Environment Variables
+
+| Variable | Default | Description |
+|:---------|:--------|:------------|
+| `VITE_API_BASE_URL` | `http://localhost:8000` | Base URL for all frontend API calls and WebSocket URL derivation |
+
+Create `frontend/.env` (or `frontend/.env.local`) to override the API target:
+
+```env
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+### Dev Port and CORS Notes
+
+- The frontend Vite server is configured for port `3000` in `frontend/vite.config.ts`.
+- Backend CORS allow-list should include the exact frontend origin(s) you use in development and deployment.
+- If you change frontend port, update CORS settings in `backend/main.py` accordingly.
+
 **Override defaults by creating a `.env` file in the project root:**
 
 ```env
@@ -753,6 +836,9 @@ REPORTS_DIR=reports/
 | TF-IDF vectorizer | `models/vectorizer.pkl` | `train_multiclass.py` | `multiclass_inference.py`, backend | Text feature extractor for Stage 2 input |
 | Eval metrics | `reports/evaluation_metrics.json` | `evaluate.py` | Backend `/reports`, frontend Reports page | Full pipeline evaluation results |
 | Training metrics | `reports/multiclass_training_metrics.json` | `train_multiclass.py` | Frontend Reports page | Stage 2 per-class training performance |
+| Runtime report metrics | `reports/metrics.json` | `evaluate.py` | `/reports/manifest`, Reports page metric cards | Frontend-friendly metrics payload used for report rendering |
+| Evaluation charts | `reports/confusion_matrix.png`, `reports/roc_curve.png`, `reports/pr_curve.png`, `reports/score_distribution.png`, `reports/metrics_summary.png` | `evaluate.py` | Reports page via `/static/reports/*` | Visual diagnostics for model quality and threshold behavior |
+| Evaluation PDF | `reports/model_evaluation_report.pdf` | `evaluate.py` | Reports page download link | Human-readable report artifact for sharing and review |
 
 ---
 
@@ -800,6 +886,9 @@ Before deploying in any research or operational environment:
 | CUDA out-of-memory during Stage 1 training | Batch size too large for available GPU VRAM | Reduce batch size; enable gradient accumulation steps |
 | scikit-learn `InconsistentVersionWarning` on Stage 2 load | Version mismatch between training and inference environment | Pin scikit-learn version in `requirements.txt`; retrain Stage 2 if necessary |
 | Sequences load slowly / OOM during dataset construction | `sequences.pt` too large for available RAM | Reduce sliding window stride; use chunked loading in `dataset.py` |
+| Reports page shows "Chart not available" | Report artifacts are missing or stale in `reports/` | Run `python src/evaluate.py`, then check `/reports/manifest` and `/static/reports/<chart>.png` |
+| `/predict` returns 422 validation error | Sequence is not exactly 64 CAN IDs | Send exactly 64 tokens per request window |
+| Dashboard is connected but appears static | Stream interval is high or analysis controls are paused | Check `/stream/config`, adjust interval, and ensure UI analysis state is active |
 
 ---
 
