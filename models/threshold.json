@@ -1,10 +1,10 @@
 {
-  "threshold": 3.0,
+  "threshold": 3.17,
   "percentile": 99,
   "mean_normal": 0.5828427672386169,
   "std_normal": 1.0406482219696045,
   "min_normal": 0.00017947214655578136,
   "max_normal": 5.013270378112793,
   "num_samples": 10000,
-  "updated_at": "2026-04-01T19:24:46.472098+00:00"
+  "updated_at": "2026-04-10T12:04:03.439198+00:00"
 }

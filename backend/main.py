@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import shutil
 import time
 from collections import Counter
 from contextlib import asynccontextmanager
@@ -31,6 +32,8 @@ from src.multiclass_inference import predict_attack_type
 BASE_DIR = settings.PROJECT_ROOT
 DATA_DIR = BASE_DIR / "data"
 MODELS_DIR = BASE_DIR / "models"
+RESULTS_DIR = BASE_DIR / "results"
+RESULTS_FIGURES_DIR = RESULTS_DIR / "figures"
 REPORTS_DIR = BASE_DIR / "reports"
 
 # StaticFiles validates the directory when mounted, so create it at import time.
@@ -198,6 +201,32 @@ def load_json(path: Path) -> Dict[str, Any]:
 def save_threshold_data(path: Path, payload: Dict[str, Any]) -> None:
     with path.open("w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
+
+
+def sync_report_artifacts() -> None:
+    """Keep backend-served report artifacts in sync with generated evaluation outputs."""
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    chart_sources: Dict[str, Sequence[Path]] = {
+        "confusion_matrix.png": [RESULTS_FIGURES_DIR / "confusion_matrix.png"],
+        "roc_curve.png": [RESULTS_FIGURES_DIR / "roc_curve.png"],
+        "pr_curve.png": [
+            RESULTS_FIGURES_DIR / "pr_curve.png",
+            RESULTS_FIGURES_DIR / "precision_recall_curve.png",
+        ],
+        "score_distribution.png": [RESULTS_FIGURES_DIR / "score_distribution.png"],
+        "metrics_summary.png": [RESULTS_FIGURES_DIR / "metrics_summary.png"],
+    }
+
+    for target_name, candidates in chart_sources.items():
+        for source_path in candidates:
+            if source_path.exists():
+                shutil.copy2(source_path, REPORTS_DIR / target_name)
+                break
+
+    metrics_source = RESULTS_DIR / "evaluation_metrics.json"
+    if metrics_source.exists():
+        shutil.copy2(metrics_source, REPORTS_DIR / "metrics.json")
 
 
 def normalize_can_id(raw: str) -> str:
@@ -476,6 +505,7 @@ def decode_tokens_to_can_ids(tokens: Sequence[int]) -> List[str]:
 async def lifespan(_: FastAPI):
     try:
         REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        sync_report_artifacts()
         load_runtime_assets()
     except FileNotFoundError as exc:
         runtime_state.loaded = False
@@ -610,10 +640,13 @@ async def get_vocab_size() -> Dict[str, int]:
 
 @app.get("/reports/manifest")
 async def get_reports_manifest() -> Dict[str, Any]:
+    sync_report_artifacts()
+
     expected = [
         "confusion_matrix.png",
         "roc_curve.png",
         "pr_curve.png",
+        "precision_recall_curve.png",
         "score_distribution.png",
         "metrics_summary.png",
         "model_evaluation_report.pdf",

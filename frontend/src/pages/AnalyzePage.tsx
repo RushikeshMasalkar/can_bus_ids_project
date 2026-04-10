@@ -1,7 +1,9 @@
+// FILE: frontend/src/pages/AnalyzePage.tsx - BUGS FIXED: 4, 6
 import { FormEvent, useMemo, useState } from 'react';
+import { Play, Radar } from 'lucide-react';
 import { apiClient, type PredictionResponse } from '../api/client';
 import { useLiveStreamContext } from '../context/LiveStreamContext';
-import { ConsoleLayout } from '../layout/ConsoleLayout';
+import { AppLayout } from '../layout/AppLayout';
 
 function parseSequenceInput(text: string): string[] {
   return text
@@ -9,6 +11,25 @@ function parseSequenceInput(text: string): string[] {
     .map((item) => item.trim())
     .filter(Boolean);
 }
+
+const CARD_STYLE: React.CSSProperties = {
+  background: 'var(--color-bg-card)',
+  border: '1px solid var(--color-border)',
+  borderRadius: '10px',
+  boxShadow: 'var(--shadow-card)',
+  padding: '20px 24px',
+};
+
+const SECTION_LABEL_STYLE: React.CSSProperties = {
+  fontSize: '0.68rem',
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: '0.09em',
+  color: 'var(--color-text-muted)',
+  marginBottom: '12px',
+  paddingLeft: '8px',
+  borderLeft: '3px solid var(--color-primary)',
+};
 
 export function AnalyzePage() {
   const [sequenceText, setSequenceText] = useState('');
@@ -21,23 +42,21 @@ export function AnalyzePage() {
   const tokens = useMemo(() => parseSequenceInput(sequenceText), [sequenceText]);
 
   const feedRows = useMemo(() => {
-    const latest = [...points].slice(-5).reverse();
-    return latest.map((entry) => {
-      const label = entry.label === 'ATTACK' ? 'ATTACK' : 'BENIGN';
-      return {
-        timestamp: new Date().toISOString(),
-        score: entry.score,
-        label,
-        type: entry.attackType,
-      };
-    });
+    const latest = [...points].slice(-6).reverse();
+    return latest.map((entry) => ({
+      id: entry.id,
+      time: entry.time,
+      score: entry.score,
+      label: entry.label,
+      type: entry.attackType,
+    }));
   }, [points]);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
 
     if (tokens.length !== 64) {
-      setError(`Exactly 64 CAN arbitration identifiers are required for a valid sequence window. Current token count: ${tokens.length}`);
+      setError(`Exactly 64 CAN IDs are required. Current count: ${tokens.length}`);
       return;
     }
 
@@ -55,291 +74,219 @@ export function AnalyzePage() {
     }
   }
 
+  const resultBoxStyle: React.CSSProperties = result?.is_attack
+    ? {
+        background: 'var(--color-danger-bg)',
+        border: '1px solid rgba(196,30,58,0.2)',
+        borderLeft: '4px solid var(--color-danger)',
+        borderRadius: '10px',
+        padding: '16px 20px',
+      }
+    : {
+        background: 'var(--color-success-bg)',
+        border: '1px solid rgba(15,123,85,0.2)',
+        borderLeft: '4px solid var(--color-success)',
+        borderRadius: '10px',
+        padding: '16px 20px',
+      };
+
   return (
-    <ConsoleLayout activeNav="integration">
-      <div className="mx-auto max-w-[1200px] space-y-12 p-8">
-        <header className="relative overflow-hidden rounded-xl bg-primary-container p-10 text-white">
-          <div className="relative z-10">
-            <h1 className="mb-2 font-headline text-4xl font-bold tracking-tight">Production-Grade Inference API Architecture</h1>
-            <p className="font-medium text-on-primary-container">RESTful and WebSocket endpoint specifications for automotive intrusion telemetry integration and real-time anomaly classification.</p>
-          </div>
-          <div className="absolute right-0 top-0 flex h-full w-64 items-center justify-center opacity-10">
-            <span className="material-symbols-outlined text-[120px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-              terminal
-            </span>
-          </div>
-        </header>
-
-        {/* Section 1: Abstract */}
-        <section className="rounded-xl border border-outline-variant/10 bg-surface-container-low p-8">
-          <div className="mb-2 font-mono text-[10px] font-bold uppercase tracking-widest text-secondary">Section 1</div>
-          <h2 className="mb-4 font-headline text-xl font-bold text-primary">Abstract</h2>
-          <p className="leading-relaxed text-on-surface-variant">
-            The IDS Sentinel inference backend exposes a production-grade API surface designed for seamless integration with automotive telematics platforms, fleet management consoles, and SOC operator dashboards. The architecture provides both synchronous RESTful endpoints for on-demand sequence analysis and persistent WebSocket channels for continuous real-time telemetry streaming. All endpoints accept and emit structured JSON payloads conforming to the established data contract specification.
+    <AppLayout>
+      <div style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', minHeight: 0 }}>
+        <div style={{ marginBottom: '20px' }}>
+          <h1
+            style={{
+              fontSize: '1.1rem',
+              fontWeight: 700,
+              color: 'var(--color-text-primary)',
+              letterSpacing: '-0.01em',
+              lineHeight: 1.2,
+            }}
+          >
+            Sequence Analyzer
+          </h1>
+          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '3px' }}>
+            Submit 64 CAN IDs for manual anomaly analysis
           </p>
-        </section>
+        </div>
 
-        <div className="grid grid-cols-12 gap-8">
-          <div className="col-span-12 space-y-8 lg:col-span-8">
-            {/* Section 2: Methodology — Endpoint Catalog */}
-            <section>
-              <div className="mb-2 font-mono text-[10px] font-bold uppercase tracking-widest text-secondary">Section 2</div>
-              <h2 className="mb-6 flex items-center gap-2 font-headline text-xl font-bold text-primary">
-                <span className="material-symbols-outlined text-secondary">database</span>
-                Methodology — Endpoint Architecture
-              </h2>
-              <div className="overflow-hidden rounded-xl bg-surface-container-low shadow-sm">
-                <table className="w-full border-collapse text-left">
-                  <thead>
-                    <tr className="bg-surface-container-high">
-                      <th className="px-6 py-4 font-headline text-sm font-bold text-primary">Method</th>
-                      <th className="px-6 py-4 font-headline text-sm font-bold text-primary">Endpoint</th>
-                      <th className="px-6 py-4 font-headline text-sm font-bold text-primary">Description</th>
-                      <th className="px-6 py-4 font-headline text-sm font-bold text-primary">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-surface-container-highest">
-                    <tr className="bg-surface-container-lowest">
-                      <td className="px-6 py-4">
-                        <span className="rounded bg-secondary-container px-3 py-1 font-mono text-xs font-bold text-on-secondary-container">POST</span>
-                      </td>
-                      <td className="px-6 py-4 font-mono text-xs text-primary">/predict</td>
-                      <td className="px-6 py-4 text-sm text-on-surface-variant">Single 64-frame CAN sequence anomaly scoring and multiclass classification</td>
-                      <td className="px-6 py-4">
-                        <span className="flex items-center gap-1.5 text-xs font-bold text-tertiary-container">
-                          <span className="h-2 w-2 rounded-full bg-tertiary-fixed-dim" />
-                          Operational
-                        </span>
-                      </td>
-                    </tr>
-                    <tr className="bg-surface-container-lowest">
-                      <td className="px-6 py-4">
-                        <span className="rounded bg-surface-container-highest px-3 py-1 font-mono text-xs font-bold text-primary">GET</span>
-                      </td>
-                      <td className="px-6 py-4 font-mono text-xs text-primary">/ws/live</td>
-                      <td className="px-6 py-4 text-sm text-on-surface-variant">Persistent WebSocket channel for continuous real-time anomaly telemetry streaming</td>
-                      <td className="px-6 py-4">
-                        <span className="flex items-center gap-1.5 text-xs font-bold text-tertiary-container">
-                          <span className="h-2 w-2 rounded-full bg-tertiary-fixed-dim" />
-                          Operational
-                        </span>
-                      </td>
-                    </tr>
-                    <tr className="bg-surface-container-lowest">
-                      <td className="px-6 py-4">
-                        <span className="rounded bg-surface-container-highest px-3 py-1 font-mono text-xs font-bold text-primary">GET</span>
-                      </td>
-                      <td className="px-6 py-4 font-mono text-xs text-primary">/reports/manifest</td>
-                      <td className="px-6 py-4 text-sm text-on-surface-variant">Retrieval of available report artifacts, evaluation metrics, and analysis figures</td>
-                      <td className="px-6 py-4">
-                        <span className="flex items-center gap-1.5 text-xs font-bold text-on-surface-variant opacity-70">
-                          <span className="h-2 w-2 rounded-full bg-outline-variant" />
-                          Stable
-                        </span>
-                      </td>
-                    </tr>
-                    <tr className="bg-surface-container-lowest">
-                      <td className="px-6 py-4">
-                        <span className="rounded bg-secondary-container px-3 py-1 font-mono text-xs font-bold text-on-secondary-container">POST</span>
-                      </td>
-                      <td className="px-6 py-4 font-mono text-xs text-primary">/predict/batch</td>
-                      <td className="px-6 py-4 text-sm text-on-surface-variant">Batch inference for parallel processing of multiple CAN sequence windows</td>
-                      <td className="px-6 py-4">
-                        <span className="flex items-center gap-1.5 text-xs font-bold text-tertiary-container">
-                          <span className="h-2 w-2 rounded-full bg-tertiary-fixed-dim" />
-                          Operational
-                        </span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </section>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+          <section className="xl:col-span-8" style={CARD_STYLE}>
+            <div style={SECTION_LABEL_STYLE}>Manual Input</div>
+            <h2 style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>Single-sequence inference</h2>
+            <p style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+              Paste exactly 64 IDs and run Stage-1/Stage-2 prediction.
+            </p>
 
-            {/* Section 3: Experimental Setup — Sequence Analyzer */}
-            <section className="space-y-6 rounded-xl bg-surface-container-low p-8 shadow-sm">
-              <div className="mb-2 font-mono text-[10px] font-bold uppercase tracking-widest text-secondary">Section 3</div>
-              <div className="flex items-end justify-between">
-                <div>
-                  <h2 className="font-headline text-xl font-bold text-primary">Experimental Setup — Interactive Sequence Analyzer</h2>
-                  <p className="text-sm text-on-surface-variant">Submit a single 64-frame CAN bus arbitration ID sequence for real-time dual-stage threat analysis through the inference pipeline.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="rounded bg-secondary-fixed px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-secondary">Experimental</span>
-                  <div className="flex overflow-hidden rounded-lg border border-outline-variant bg-surface">
-                    <button
-                      type="button"
-                      onClick={() => setAnalysisMode('fast')}
-                      className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${
-                        analysisMode === 'fast' ? 'bg-primary text-white' : 'text-on-surface-variant hover:bg-surface-container-low'
-                      }`}
-                    >
-                      Fast
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAnalysisMode('detailed')}
-                      className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${
-                        analysisMode === 'detailed' ? 'bg-primary text-white' : 'text-on-surface-variant hover:bg-surface-container-low'
-                      }`}
-                    >
-                      Detailed
-                    </button>
-                  </div>
+            <form onSubmit={onSubmit} style={{ marginTop: '14px' }}>
+              <label
+                htmlFor="sequence-input"
+                style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontSize: '0.68rem',
+                  fontWeight: 500,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.09em',
+                  color: 'var(--color-text-muted)',
+                }}
+              >
+                64 CAN IDs
+              </label>
+
+              <textarea
+                id="sequence-input"
+                className="analyze-sequence-input"
+                rows={7}
+                placeholder="0x18F 0x0C9 0x111 ..."
+                value={sequenceText}
+                onChange={(event) => setSequenceText(event.target.value)}
+              />
+
+              <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{tokens.length}/64</span>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setAnalysisMode('fast')}
+                    style={{
+                      border: '1px solid var(--color-border)',
+                      background: analysisMode === 'fast' ? 'var(--color-primary-light)' : 'var(--color-bg-card)',
+                      color: analysisMode === 'fast' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Fast
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAnalysisMode('detailed')}
+                    style={{
+                      border: '1px solid var(--color-border)',
+                      background: analysisMode === 'detailed' ? 'var(--color-primary-light)' : 'var(--color-bg-card)',
+                      color: analysisMode === 'detailed' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Detailed
+                  </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-                <form className="space-y-4" onSubmit={onSubmit}>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant">64-Frame CAN Arbitration ID Sequence</label>
-                  <textarea
-                    className="w-full rounded-xl border-none bg-surface-container-lowest p-4 font-mono text-xs leading-relaxed ring-1 ring-outline-variant focus:ring-2 focus:ring-secondary"
-                    placeholder="0x18F, 0x0C9, 0x111, 0x0AF... (Provide exactly 64 hexadecimal CAN arbitration identifiers)"
-                    rows={6}
-                    value={sequenceText}
-                    onChange={(event) => setSequenceText(event.target.value)}
-                  />
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-[11px] text-on-surface-variant">{tokens.length}/64 identifiers</span>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="flex items-center justify-center gap-2 rounded-xl bg-secondary px-6 py-3 font-headline font-bold text-white transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      <span className="material-symbols-outlined text-sm">bolt</span>
-                      {loading ? 'Executing Inference...' : 'Execute Prediction'}
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-on-surface-variant">
-                    Mode: <span className="font-semibold text-primary">{analysisMode === 'fast' ? 'Fast — Reduced response overhead, anomaly score only' : 'Detailed — Full diagnostic output with per-token analysis'}</span>
-                  </p>
-                  {error ? <p className="text-sm font-medium text-error">{error}</p> : null}
-                </form>
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-3 inline-flex items-center gap-2 rounded-btn bg-primary px-6 py-2.5 text-[0.83rem] font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                <Play size={14} />
+                {loading ? 'Analyzing...' : 'Analyze Sequence'}
+              </button>
 
-                <div
-                  className={`relative overflow-hidden rounded-xl border p-6 ${
-                    result?.is_attack
-                      ? 'border-error/10 bg-error-container/30'
-                      : 'border-secondary/10 bg-secondary-container/20'
-                  }`}
+              {error ? <p style={{ marginTop: '10px', fontSize: '0.76rem', color: 'var(--color-danger)' }}>{error}</p> : null}
+            </form>
+          </section>
+
+          <section className="xl:col-span-4" style={CARD_STYLE}>
+            <div style={SECTION_LABEL_STYLE}>Result</div>
+            <h2 style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>Inference output</h2>
+            <p style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Current prediction snapshot.</p>
+
+            <div style={{ marginTop: '14px', ...resultBoxStyle }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '8px' }}>
+                <span
+                  style={{
+                    fontSize: '0.68rem',
+                    fontWeight: 500,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.09em',
+                    color: result?.is_attack ? 'var(--color-danger)' : 'var(--color-success)',
+                  }}
                 >
-                  <div className="absolute right-0 top-0 p-4 opacity-20">
-                    <span className="material-symbols-outlined text-6xl text-error">dangerous</span>
-                  </div>
-
-                  <div className="mb-6 flex items-start justify-between">
-                    <div
-                      className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
-                        result?.is_attack ? 'bg-error text-white' : 'bg-tertiary-container text-tertiary-fixed-dim'
-                      }`}
-                    >
-                      {result ? (result.is_attack ? 'Intrusion Detected — Attack Classification Active' : 'Nominal Traffic — No Anomaly Detected') : 'Awaiting Inference Execution'}
-                    </div>
-                    <div className="text-right">
-                      <div className={`font-headline text-3xl font-bold ${result?.is_attack ? 'text-error' : 'text-primary'}`}>
-                        {result ? result.anomaly_score.toFixed(2) : '0.00'}
-                      </div>
-                      <div className="text-[10px] font-bold uppercase opacity-70">Reconstruction Loss Score</div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase opacity-60">Decision Threshold (τ)</p>
-                      <p className="font-mono text-sm font-bold text-primary">{result ? result.threshold.toFixed(2) : '0.00'}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase opacity-60">Attack Category (Stage-2)</p>
-                      <p className="font-mono text-sm font-bold text-error">{result?.attack_type ?? 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase opacity-60">Classifier Confidence</p>
-                      <p className="font-mono text-sm font-bold text-primary">{result ? `${(result.confidence * 100).toFixed(1)}%` : '0.0%'}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase opacity-60">Pipeline Execution Latency</p>
-                      <p className="font-mono text-sm font-bold text-primary">{result ? `${result.processing_time_ms.toFixed(1)}ms` : '0.0ms'}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <div className="col-span-12 space-y-8 lg:col-span-4">
-            <section className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="font-headline text-sm font-bold uppercase tracking-widest text-primary">Reference Implementation</h2>
-                <div className="flex gap-2">
-                  <button type="button" className="rounded bg-surface-container-high px-2 py-1 text-[10px] font-bold text-primary">
-                    Python
-                  </button>
-                  <button type="button" className="px-2 py-1 text-[10px] font-bold text-on-surface-variant transition-all hover:text-primary">
-                    Node.js
-                  </button>
-                </div>
-              </div>
-
-              <div className="code-block overflow-x-auto rounded-xl p-5 text-xs font-mono shadow-lg">
-                <div className="mb-4 flex gap-1.5 opacity-30">
-                  <div className="h-2 w-2 rounded-full bg-red-400" />
-                  <div className="h-2 w-2 rounded-full bg-amber-400" />
-                  <div className="h-2 w-2 rounded-full bg-emerald-400" />
-                </div>
-                <pre>
-                  <code>{`import requests
-
-payload = {
-    "sequence": ["0x18F", "0x0C9", ...],
-    "device_id": "sentinel-04"
-}
-
-response = requests.post(
-    "http://localhost:8000/predict",
-    json=payload
-)
-
-print(response.json())`}</code>
-                </pre>
-              </div>
-            </section>
-
-            <section className="space-y-4">
-              <h2 className="flex items-center justify-between font-headline text-sm font-bold uppercase tracking-widest text-primary">
-                Live Telemetry Feed
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-secondary-container opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-secondary" />
+                  {result ? (result.is_attack ? 'Attack Detected' : 'Normal Traffic') : 'Awaiting Input'}
                 </span>
-              </h2>
-
-              <div className="h-80 space-y-3 overflow-y-auto rounded-xl bg-surface-container-highest p-4 font-mono text-[10px] leading-relaxed shadow-inner">
-                {feedRows.length === 0 ? (
-                  <div className="rounded-lg border-l-4 border-tertiary-fixed-dim bg-surface-container-lowest p-3">
-                    <p className="text-on-surface-variant opacity-50">Establishing connection to the inference telemetry stream...</p>
-                  </div>
-                ) : (
-                  feedRows.map((row, index) => (
-                    <div
-                      key={`feed-${row.timestamp}-${index}`}
-                      className={`rounded-lg border-l-4 bg-surface-container-lowest p-3 ${
-                        row.label === 'ATTACK' ? 'border-error' : 'border-tertiary-fixed-dim'
-                      }`}
-                    >
-                      <p className="text-on-surface-variant">{`{ "timestamp": "${row.timestamp}",`}</p>
-                      <p className="ml-2 text-on-surface-variant">
-                        {row.label === 'ATTACK'
-                          ? `"score": ${row.score.toFixed(3)}, "label": "ATTACK", "type": "${row.type ?? 'Unknown'}" }`
-                          : `"score": ${row.score.toFixed(3)}, "label": "BENIGN" }`}
-                      </p>
-                    </div>
-                  ))
-                )}
+                <Radar size={16} color={result?.is_attack ? 'var(--color-danger)' : 'var(--color-success)'} />
               </div>
-            </section>
-          </div>
+
+              <div style={{ marginTop: '8px', fontFamily: 'JetBrains Mono, monospace', fontSize: '1.3rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                {result ? result.anomaly_score.toFixed(3) : '0.000'}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Anomaly score</div>
+
+              <div style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>Threshold</div>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8rem', color: 'var(--color-text-primary)' }}>
+                    {result ? result.threshold.toFixed(3) : '0.000'}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>Attack Type</div>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8rem', color: 'var(--color-text-primary)' }}>{result?.attack_type ?? 'N/A'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>Confidence</div>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8rem', color: 'var(--color-text-primary)' }}>
+                    {result ? `${(result.confidence * 100).toFixed(1)}%` : '0.0%'}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>Latency</div>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8rem', color: 'var(--color-text-primary)' }}>
+                    {result ? `${result.processing_time_ms.toFixed(1)}ms` : '0.0ms'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="xl:col-span-12" style={CARD_STYLE}>
+            <div style={SECTION_LABEL_STYLE}>Live Feed</div>
+            <h2 style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>Recent telemetry rows</h2>
+            <p style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Most recent streaming decisions from dashboard context.</p>
+
+            <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {feedRows.length === 0 ? (
+                <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-bg-base)', padding: '10px 14px', fontSize: '0.76rem', color: 'var(--color-text-secondary)' }}>
+                  Waiting for live stream data...
+                </div>
+              ) : (
+                feedRows.map((row) => (
+                  <div
+                    key={row.id}
+                    style={{
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      background: 'var(--color-bg-base)',
+                      padding: '10px 14px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      fontSize: '0.76rem',
+                      color: 'var(--color-text-secondary)',
+                    }}
+                  >
+                    <span style={{ minWidth: 0 }}>
+                      {row.label === 'ATTACK' ? `${row.type ?? 'Unknown'} attack detected` : 'Normal traffic'}
+                    </span>
+                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.72rem', color: 'var(--color-text-primary)' }}>
+                      {row.score.toFixed(3)}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
         </div>
       </div>
-    </ConsoleLayout>
+    </AppLayout>
   );
 }

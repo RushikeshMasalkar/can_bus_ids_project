@@ -1,25 +1,57 @@
-import { useEffect, useMemo, useState } from 'react';
+// FILE: frontend/src/pages/DashboardPage.tsx - FIXES: FIX 1, FIX 2
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Activity, AlertTriangle, Shield, Sigma, ShieldCheck } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { useLiveStreamContext } from '../context/LiveStreamContext';
-import { ConsoleLayout } from '../layout/ConsoleLayout';
+import { AppLayout, useAnalysisControl } from '../layout/AppLayout';
 import { AdvancedAnalytics } from '../components/AdvancedAnalytics';
 
-const DONUT_COLORS = ['#2A73CC', '#1F5FA8', '#4E89D6', '#7AA8E2', '#A7C7ED'];
+const DONUT_COLORS = ['#1A6FD4', '#3A80DA', '#5B8FD9', '#7EA8E3', '#AAC4ED'];
 const FALLBACK_TYPES = ['DoS', 'Fuzzy', 'Gear', 'RPM'];
+const MAX_RENDERED_POINTS = 90;
+const MAX_RENDERED_ALERTS = 14;
+
+const CARD_STYLE: CSSProperties = {
+  background: 'var(--color-bg-card)',
+  border: '1px solid var(--color-border)',
+  borderRadius: '10px',
+  boxShadow: 'var(--shadow-card)',
+};
+
+const SECTION_LABEL_STYLE: CSSProperties = {
+  fontSize: '0.68rem',
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: '0.09em',
+  color: 'var(--color-text-muted)',
+  paddingLeft: '8px',
+  borderLeft: '3px solid var(--color-primary)',
+  marginBottom: '12px',
+  lineHeight: 1,
+};
 
 export function DashboardPage() {
-  const {
-    points,
-    alerts,
-    connected,
-    totalAnalyzed,
-    attacksDetected,
-    detectionRate,
-    threshold,
-    scoreDistribution,
-    attackBreakdown,
-  } = useLiveStreamContext();
+  return (
+    <AppLayout>
+      <DashboardContent />
+    </AppLayout>
+  );
+}
+
+function DashboardContent() {
+  const { points, alerts, connected, threshold } = useLiveStreamContext();
+  const { isAnalysisRunning } = useAnalysisControl();
+
+  const [renderedPoints, setRenderedPoints] = useState<typeof points>([]);
+  const [renderedAlerts, setRenderedAlerts] = useState<typeof alerts>([]);
+  const [renderedTotalAnalyzed, setRenderedTotalAnalyzed] = useState(0);
+  const [renderedAttacksDetected, setRenderedAttacksDetected] = useState(0);
+
+  const lastProcessedPointIdRef = useRef(0);
+  const lastProcessedAlertIdRef = useRef(0);
+  const ignoreUntilPointIdRef = useRef(0);
+  const ignoreUntilAlertIdRef = useRef(0);
 
   const [thresholdInput, setThresholdInput] = useState(0);
   const [thresholdEdited, setThresholdEdited] = useState(false);
@@ -51,6 +83,61 @@ export function DashboardPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isAnalysisRunning) {
+      const latestPointId = points.length > 0 ? points[points.length - 1].id : 0;
+      ignoreUntilPointIdRef.current = Math.max(ignoreUntilPointIdRef.current, latestPointId);
+      return;
+    }
+
+    const cutoff = Math.max(lastProcessedPointIdRef.current, ignoreUntilPointIdRef.current);
+    const incomingPoints = points.filter((point) => point.id > cutoff);
+
+    if (incomingPoints.length === 0) {
+      return;
+    }
+
+    lastProcessedPointIdRef.current = incomingPoints[incomingPoints.length - 1].id;
+
+    setRenderedPoints((prev) => {
+      const merged = [...prev, ...incomingPoints];
+      return merged.slice(Math.max(0, merged.length - MAX_RENDERED_POINTS));
+    });
+
+    setRenderedTotalAnalyzed((prev) => prev + incomingPoints.length);
+    const newAttackCount = incomingPoints.filter((point) => point.label === 'ATTACK').length;
+    if (newAttackCount > 0) {
+      setRenderedAttacksDetected((prev) => prev + newAttackCount);
+    }
+  }, [points, isAnalysisRunning]);
+
+  useEffect(() => {
+    if (!isAnalysisRunning) {
+      const latestAlertId = alerts.length > 0 ? alerts[0].id : 0;
+      ignoreUntilAlertIdRef.current = Math.max(ignoreUntilAlertIdRef.current, latestAlertId);
+      return;
+    }
+
+    const cutoff = Math.max(lastProcessedAlertIdRef.current, ignoreUntilAlertIdRef.current);
+    const incomingAlerts = alerts.filter((alert) => alert.id > cutoff);
+
+    if (incomingAlerts.length === 0) {
+      return;
+    }
+
+    lastProcessedAlertIdRef.current = Math.max(...incomingAlerts.map((alert) => alert.id));
+
+    setRenderedAlerts((prev) => {
+      const unique = new Map<number, (typeof alerts)[number]>();
+      [...incomingAlerts, ...prev].forEach((alert) => {
+        if (!unique.has(alert.id)) {
+          unique.set(alert.id, alert);
+        }
+      });
+      return Array.from(unique.values()).slice(0, MAX_RENDERED_ALERTS);
+    });
+  }, [alerts, isAnalysisRunning]);
+
   async function handleThresholdUpdate() {
     setControlBusy('threshold');
     setControlError(null);
@@ -61,9 +148,8 @@ export function DashboardPage() {
       await apiClient.updateThreshold(safeThreshold, true);
       setThresholdEdited(false);
       setControlNotice('Threshold updated successfully.');
-    } catch (updateError) {
-      const message = updateError instanceof Error ? updateError.message : 'Failed to update threshold.';
-      setControlError(message);
+    } catch {
+      setControlError('Unable to update threshold.');
     } finally {
       setControlBusy(null);
     }
@@ -77,22 +163,36 @@ export function DashboardPage() {
     try {
       const config = await apiClient.updateStreamConfig(streamIntervalMs);
       setStreamIntervalMs(config.interval_ms);
-      setControlNotice(`Live sequence speed set to ${config.frames_per_second.toFixed(2)} frames/sec.`);
-    } catch (updateError) {
-      const message = updateError instanceof Error ? updateError.message : 'Failed to update sequence speed.';
-      setControlError(message);
+      setControlNotice(`Live sequence speed set to ${config.frames_per_second.toFixed(2)} fps.`);
+    } catch {
+      setControlError('Unable to update stream speed.');
     } finally {
       setControlBusy(null);
     }
   }
 
   const averageScore = useMemo(() => {
-    if (points.length === 0) {
+    if (renderedPoints.length === 0) {
       return 0;
     }
-    const total = points.reduce((acc, point) => acc + point.score, 0);
-    return total / points.length;
-  }, [points]);
+    const total = renderedPoints.reduce((acc, point) => acc + point.score, 0);
+    return total / renderedPoints.length;
+  }, [renderedPoints]);
+
+  const detectionRate = useMemo(() => {
+    if (!renderedTotalAnalyzed) {
+      return 0;
+    }
+    return (renderedAttacksDetected / renderedTotalAnalyzed) * 100;
+  }, [renderedAttacksDetected, renderedTotalAnalyzed]);
+
+  const attackBreakdown = useMemo(() => {
+    const map = new Map<string, number>();
+    renderedAlerts.forEach((item) => {
+      map.set(item.attackType, (map.get(item.attackType) ?? 0) + 1);
+    });
+    return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
+  }, [renderedAlerts]);
 
   const donutData = useMemo(() => {
     if (attackBreakdown.length === 0) {
@@ -101,14 +201,11 @@ export function DashboardPage() {
     return attackBreakdown;
   }, [attackBreakdown]);
 
-  const donutTotal = useMemo(
-    () => donutData.reduce((acc, item) => acc + item.value, 0),
-    [donutData]
-  );
+  const donutTotal = useMemo(() => donutData.reduce((acc, item) => acc + item.value, 0), [donutData]);
 
   const donutGradient = useMemo(() => {
     if (donutTotal === 0) {
-      return 'conic-gradient(#eceef0 0deg 360deg)';
+      return 'conic-gradient(#ECEFF5 0deg 360deg)';
     }
 
     let running = 0;
@@ -122,292 +219,536 @@ export function DashboardPage() {
     return `conic-gradient(${segments.join(',')})`;
   }, [donutData, donutTotal]);
 
-  const maxHistogramCount = useMemo(
-    () => Math.max(1, ...scoreDistribution.map((item) => item.count)),
-    [scoreDistribution]
-  );
+  const scoreDistribution = useMemo(() => {
+    if (renderedPoints.length === 0) {
+      return [] as Array<{ bin: string; count: number }>;
+    }
 
+    const min = Math.min(...renderedPoints.map((item) => item.score));
+    const max = Math.max(...renderedPoints.map((item) => item.score));
+    const bins = 8;
+    const width = (max - min) / bins || 0.1;
+    const counts = new Array<number>(bins).fill(0);
+
+    renderedPoints.forEach((item) => {
+      const idx = Math.min(bins - 1, Math.floor((item.score - min) / width));
+      counts[idx] += 1;
+    });
+
+    return counts.map((count, idx) => {
+      const start = min + idx * width;
+      const end = start + width;
+      return {
+        bin: `${start.toFixed(2)}-${end.toFixed(2)}`,
+        count,
+      };
+    });
+  }, [renderedPoints]);
+
+  const maxHistogramCount = useMemo(() => {
+    const counts = scoreDistribution.map((item) => item.count);
+    return counts.length > 0 ? Math.max(1, ...counts) : 1;
+  }, [scoreDistribution]);
+
+  const eventFeed = useMemo(() => {
+    const alertsById = new Map(renderedAlerts.map((item) => [item.id, item]));
+    return [...renderedPoints]
+      .slice(-MAX_RENDERED_ALERTS)
+      .reverse()
+      .map((point) => {
+        const matchingAlert = alertsById.get(point.id);
+        return {
+          id: point.id,
+          time: point.time,
+          label: point.label,
+          score: point.score,
+          attackType: point.attackType ?? 'Normal',
+          confidence: matchingAlert?.confidence ?? 0,
+        };
+      });
+  }, [renderedPoints, renderedAlerts]);
+
+  const statusBadge = useMemo(() => {
+    if (!isAnalysisRunning) {
+      return {
+        label: 'PAUSED',
+        style: {
+          border: '1px solid var(--color-border)',
+          background: 'var(--color-bg-hover)',
+          color: 'var(--color-text-muted)',
+        },
+      };
+    }
+
+    if (connected) {
+      return {
+        label: 'LIVE',
+        style: {
+          border: '1px solid rgba(15,123,85,0.2)',
+          background: 'var(--color-success-bg)',
+          color: 'var(--color-success)',
+        },
+      };
+    }
+
+    return {
+      label: 'OFFLINE',
+      style: {
+        border: '1px solid var(--color-border)',
+        background: 'var(--color-bg-hover)',
+        color: 'var(--color-text-muted)',
+      },
+    };
+  }, [connected, isAnalysisRunning]);
+
+  const chartData =
+    renderedPoints.length > 0
+      ? renderedPoints
+      : [{ time: '--:--:--', score: 0, attackScore: null, threshold: 0, id: 0, label: 'NORMAL', attackType: null }];
+
+  const activeThreshold = threshold > 0 ? threshold : thresholdInput || 0.75;
   const cpuLoad = Math.min(95, Math.max(10, Math.round((detectionRate + (connected ? 8 : 0)) / 4)));
 
   return (
-    <ConsoleLayout activeNav="dashboard">
-      <div className="mx-auto max-w-[1440px] p-8">
-        <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-5">
-          <div className="flex flex-col justify-between rounded-xl bg-surface-container-lowest p-5">
-            <span className="font-headline text-xs font-bold uppercase tracking-wider text-on-surface-variant/70">Sequences Evaluated</span>
-            <div className="mt-2 flex items-end justify-between">
-              <span className="font-headline text-2xl font-bold text-primary">{totalAnalyzed.toLocaleString()}</span>
-              <div className="flex h-6 w-16 items-end gap-0.5 rounded-sm bg-tertiary-fixed-dim/20 px-1">
-                {[30, 50, 40, 80, 60].map((height) => (
-                  <div key={`ta-${height}`} className="w-1 bg-tertiary-fixed-dim" style={{ height: `${height}%` }} />
-                ))}
-              </div>
+    <div style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '10px',
+          minHeight: '52px',
+          maxHeight: '60px',
+          marginBottom: '20px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+          <ShieldCheck
+            style={{
+              width: '32px',
+              height: '32px',
+              color: 'var(--color-primary)',
+              maxHeight: '48px',
+              maxWidth: '48px',
+              objectFit: 'contain',
+              flexShrink: 0,
+            }}
+          />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h1
+                style={{
+                  fontSize: '1.1rem',
+                  fontWeight: 700,
+                  color: 'var(--color-text-primary)',
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                Network Monitor
+              </h1>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.6rem',
+                  fontWeight: 600,
+                  padding: '2px 7px',
+                  height: '18px',
+                  letterSpacing: '0.08em',
+                  borderRadius: '999px',
+                  lineHeight: 1,
+                  textTransform: 'uppercase',
+                  ...statusBadge.style,
+                }}
+              >
+                {statusBadge.label}
+              </span>
             </div>
-          </div>
-
-          <div className="flex flex-col justify-between rounded-xl border-l-4 border-error bg-surface-container-lowest p-5">
-            <span className="font-headline text-xs font-bold uppercase tracking-wider text-on-surface-variant/70">Intrusions Identified</span>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="font-headline text-2xl font-bold text-error">{attacksDetected}</span>
-              <div className={`h-3 w-3 rounded-full ${attacksDetected > 0 ? 'pulse-red bg-error' : 'bg-secondary'}`} />
-            </div>
-          </div>
-
-          <div className="flex flex-col justify-between rounded-xl bg-surface-container-lowest p-5">
-            <span className="font-headline text-xs font-bold uppercase tracking-wider text-on-surface-variant/70">True Positive Detection Ratio</span>
-            <div className="mt-2">
-              <span className="font-headline text-2xl font-bold text-primary">{detectionRate.toFixed(2)}%</span>
-              <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-surface-container-high">
-                <div className="h-full bg-secondary" style={{ width: `${Math.min(100, detectionRate).toFixed(0)}%` }} />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col justify-between rounded-xl bg-surface-container-lowest p-5">
-            <span className="font-headline text-xs font-bold uppercase tracking-wider text-on-surface-variant/70">Mean Reconstruction Loss (ρ̄)</span>
-            <div className="mt-2">
-              <span className="font-mono text-2xl text-primary">{averageScore.toFixed(3)}</span>
-              <p className="text-[10px] font-bold text-on-tertiary-container">Threshold {threshold.toFixed(3)}</p>
-            </div>
-          </div>
-
-          <div className="relative flex flex-col justify-between overflow-hidden rounded-xl bg-primary p-5 text-on-primary">
-            <div className="absolute -mr-12 -mt-12 h-24 w-24 rounded-full bg-white/5" />
-            <span className="font-headline text-xs font-bold uppercase tracking-wider opacity-60">Inference Engine Status</span>
-            <div className="mt-2 flex items-center gap-2">
-              <div
-                className={`h-2.5 w-2.5 rounded-full ${connected ? 'bg-tertiary-fixed shadow-[0_0_10px_rgba(137,245,231,0.6)]' : 'bg-error'}`}
-              />
-              <span className="font-headline text-xl font-bold">{connected ? 'LIVE' : 'OFFLINE'}</span>
-            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '3px' }}>
+              Real-time CAN bus anomaly detection
+            </p>
           </div>
         </div>
 
-        <div className="bento-grid">
-          <div className="col-span-12 min-h-[400px] rounded-xl bg-surface-container-lowest p-6 lg:col-span-8">
-            <div className="mb-6 flex items-center justify-between">
-              <h3 className="font-headline text-lg font-bold text-primary">Real-Time Per-Sequence Normalized Cross-Entropy Anomaly Scores</h3>
-              <div className="flex gap-2">
-                <span className="flex items-center gap-1.5 text-xs font-medium text-on-surface-variant">
-                  <span className="h-2 w-2 rounded-full bg-secondary" />
-                  Continuous Telemetry Stream
-                </span>
-                <span className="flex items-center gap-1.5 text-xs font-medium text-on-surface-variant">
-                  <span className="h-2 w-2 rounded-full bg-error" />
-                  Dynamic Threshold Gate (τ)
-                </span>
-              </div>
+        <div style={{ textAlign: 'right' }}>
+          <div
+            style={{
+              fontSize: '0.68rem',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.09em',
+              color: 'var(--color-text-muted)',
+              lineHeight: 1,
+            }}
+          >
+            Threshold
+          </div>
+          <div style={{ marginTop: '3px', fontSize: '0.72rem', fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text-secondary)' }}>
+            {activeThreshold.toFixed(3)}
+          </div>
+        </div>
+      </header>
+
+      <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4" style={{ gap: '12px' }}>
+        {[
+          {
+            icon: <Activity size={14} color="var(--color-primary)" />,
+            value: renderedTotalAnalyzed.toLocaleString(),
+            label: 'Messages Analyzed',
+            trend: `+${Math.max(1, Math.round((1000 / streamIntervalMs) * 60)).toLocaleString()}/min`,
+            trendColor: 'var(--color-success)',
+          },
+          {
+            icon: <AlertTriangle size={14} color="var(--color-primary)" />,
+            value: renderedAttacksDetected.toLocaleString(),
+            label: 'Alerts Triggered',
+            trend: `${renderedAlerts.length} active`,
+            trendColor: 'var(--color-danger)',
+          },
+          {
+            icon: <Shield size={14} color="var(--color-primary)" />,
+            value: `${detectionRate.toFixed(2)}%`,
+            label: 'Detection Rate',
+            trend: 'runtime precision',
+            trendColor: 'var(--color-success)',
+          },
+          {
+            icon: <Sigma size={14} color="var(--color-primary)" />,
+            value: averageScore.toFixed(3),
+            label: 'Mean Score',
+            trend: `threshold ${activeThreshold.toFixed(3)}`,
+            trendColor: 'var(--color-warning)',
+          },
+        ].map((metric) => (
+          <article key={metric.label} style={{ ...CARD_STYLE, padding: '14px 16px', borderRadius: '10px' }}>
+            <div
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '7px',
+                background: 'var(--color-primary-light)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {metric.icon}
             </div>
 
-            <div className="relative mt-4 h-72 w-full border-b border-l border-outline-variant/30">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={points.length > 0 ? points : [{ time: '--:--:--', score: 0, attackScore: null, threshold: 0, id: 0, label: 'NORMAL', attackType: null }]}> 
-                  <CartesianGrid strokeDasharray="3 3" stroke="#d7dee8" />
-                  <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#5f6773' }} minTickGap={22} stroke="#d7dee8" />
-                  <YAxis tick={{ fontSize: 10, fill: '#5f6773' }} stroke="#d7dee8" domain={[0, 1]} />
-                  <Tooltip />
-                  <ReferenceLine y={threshold || 0.75} stroke="#ba1a1a" strokeDasharray="6 4" />
-                  <Line type="monotone" dataKey="score" stroke="#2A73CC" strokeWidth={2.5} dot={false} isAnimationActive />
-                  <Line
-                    type="monotone"
-                    dataKey="attackScore"
-                    stroke="transparent"
-                    dot={{ fill: '#ba1a1a', stroke: '#ba1a1a', r: 4 }}
-                    connectNulls={false}
-                    isAnimationActive
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+            <div
+              style={{
+                fontSize: '1.3rem',
+                fontWeight: 700,
+                fontFamily: 'JetBrains Mono, monospace',
+                color: 'var(--color-text-primary)',
+                marginTop: '8px',
+                lineHeight: 1.1,
+              }}
+            >
+              {metric.value}
+            </div>
+
+            <div
+              style={{
+                fontSize: '0.68rem',
+                fontWeight: 500,
+                textTransform: 'uppercase',
+                letterSpacing: '0.09em',
+                color: 'var(--color-text-muted)',
+                marginTop: '2px',
+                lineHeight: 1,
+              }}
+            >
+              {metric.label}
+            </div>
+
+            <div style={{ fontSize: '0.8rem', color: metric.trendColor, marginTop: '6px' }}>{metric.trend}</div>
+          </article>
+        ))}
+      </section>
+
+      <section className="grid grid-cols-1 xl:grid-cols-12" style={{ gap: '16px', marginTop: '16px' }}>
+        <article className="xl:col-span-8" style={{ ...CARD_STYLE, padding: '20px 24px' }}>
+          <div style={SECTION_LABEL_STYLE}>Anomaly Score Feed</div>
+          <h2 style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>Real-time reconstruction loss</h2>
+          <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+            Attack spikes are plotted against the calibrated threshold.
+          </p>
+
+          <div style={{ marginTop: '12px', height: '280px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F4" />
+                <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#8896A8' }} minTickGap={20} stroke="#E2E8F4" />
+                <YAxis tick={{ fontSize: 10, fill: '#8896A8' }} stroke="#E2E8F4" domain={[0, 1.2]} />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: '10px',
+                    border: '1px solid #E2E8F4',
+                    boxShadow: 'var(--shadow-sm)',
+                    fontSize: '0.75rem',
+                  }}
+                />
+                <ReferenceLine
+                  y={activeThreshold}
+                  stroke="#C41E3A"
+                  strokeDasharray="6 4"
+                  label={{ value: 'Threshold', position: 'right', fill: '#8896A8', fontSize: '0.7rem' }}
+                />
+                <Line type="monotone" dataKey="score" stroke="#1A6FD4" strokeWidth={2} dot={false} isAnimationActive />
+                <Line
+                  type="monotone"
+                  dataKey="attackScore"
+                  stroke="transparent"
+                  dot={{ fill: '#C41E3A', stroke: '#C41E3A', r: 3 }}
+                  connectNulls={false}
+                  isAnimationActive
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </article>
+
+        <article className="xl:col-span-4" style={{ ...CARD_STYLE, padding: '20px 24px' }}>
+          <div style={SECTION_LABEL_STYLE}>Attack Breakdown</div>
+          <h2 style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>Stage-2 class distribution</h2>
+          <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>Recent attack class proportions.</p>
+
+          <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'center', position: 'relative' }}>
+            <div style={{ width: '142px', height: '142px', borderRadius: '999px', background: donutGradient }} />
+            <div
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '84px',
+                height: '84px',
+                borderRadius: '999px',
+                background: 'var(--color-bg-card)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'column',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '1.3rem',
+                  fontWeight: 700,
+                  fontFamily: 'JetBrains Mono, monospace',
+                  color: 'var(--color-text-primary)',
+                  lineHeight: 1.1,
+                }}
+              >
+                {renderedAttacksDetected}
+              </span>
+              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', letterSpacing: '0.09em', textTransform: 'uppercase' }}>Alerts</span>
             </div>
           </div>
 
-          <div className="col-span-12 flex flex-col rounded-xl bg-surface-container-lowest p-6 lg:col-span-4">
-            <h3 className="mb-6 font-headline text-lg font-bold text-primary">Attack Category Distribution (Stage-2 Classification)</h3>
-            <div className="relative flex flex-grow items-center justify-center">
-              <div className="relative h-48 w-48 rounded-full" style={{ background: donutGradient }}>
-                <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-surface-container-lowest" />
+          <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {donutData.map((item, index) => {
+              const pct = donutTotal > 0 ? (item.value / donutTotal) * 100 : 0;
+              return (
+                <div key={item.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '9px', height: '9px', borderRadius: '2px', background: DONUT_COLORS[index % DONUT_COLORS.length] }} />
+                    <span style={{ fontSize: '0.75rem' }}>{item.name}</span>
+                  </span>
+                  <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text-secondary)' }}>{pct.toFixed(0)}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </article>
+
+        <article className="xl:col-span-8" style={{ ...CARD_STYLE, padding: '20px 24px' }}>
+          <div style={SECTION_LABEL_STYLE}>Threat Feed</div>
+          <h2 style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>Latest sequence decisions</h2>
+          <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>Incoming frames are ignored while analysis is paused.</p>
+
+          <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {eventFeed.length === 0 ? (
+              <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-bg-base)', padding: '10px 14px', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                No alerts yet.
               </div>
-              <div className="absolute flex flex-col items-center">
-                <span className="font-headline text-2xl font-bold text-primary">{attacksDetected}</span>
-                <span className="text-[10px] font-bold uppercase text-on-surface-variant">Total</span>
-              </div>
-            </div>
-            <div className="mt-6 grid grid-cols-2 gap-4">
-              {donutData.slice(0, 4).map((item, index) => {
-                const percent = donutTotal > 0 ? (item.value / donutTotal) * 100 : 0;
+            ) : (
+              eventFeed.map((item) => {
+                const isAttack = item.label === 'ATTACK';
                 return (
-                  <div key={`legend-${item.name}`} className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: DONUT_COLORS[index % DONUT_COLORS.length] }} />
-                    <span className="text-xs font-medium">{item.name} ({percent.toFixed(0)}%)</span>
+                  <div
+                    key={item.id}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      borderLeft: isAttack ? '3px solid var(--color-danger)' : '3px solid var(--color-success)',
+                      background: isAttack ? 'var(--color-danger-bg)' : 'var(--color-success-bg)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                        <span style={{ fontSize: '0.76rem', color: 'var(--color-text-primary)', fontWeight: 500 }}>{isAttack ? item.attackType.toUpperCase() : 'NORMAL'}</span>
+                        <span
+                          style={{
+                            fontSize: '0.6rem',
+                            fontWeight: 600,
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            background: isAttack ? 'rgba(196,30,58,0.18)' : 'rgba(15,123,85,0.16)',
+                            color: isAttack ? 'var(--color-danger)' : 'var(--color-success)',
+                          }}
+                        >
+                          {isAttack ? 'Attack' : 'Normal'}
+                        </span>
+                        <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text-secondary)' }}>
+                          Score {item.score.toFixed(3)}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '0.68rem', fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text-muted)' }}>{item.time}</span>
+                    </div>
                   </div>
+                );
+              })
+            )}
+          </div>
+        </article>
+
+        <div className="xl:col-span-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <article style={{ ...CARD_STYLE, padding: '20px 24px' }}>
+            <div style={SECTION_LABEL_STYLE}>Controls</div>
+            <h2 style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>Operator settings</h2>
+            <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>Threshold and stream speed.</p>
+
+            <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                  <span>Threshold</span>
+                  <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text-secondary)' }}>{thresholdInput.toFixed(3)}</span>
+                </div>
+                <input
+                  type="range"
+                  min={0.5}
+                  max={8}
+                  step={0.01}
+                  value={thresholdInput || threshold || 0.5}
+                  onChange={(event) => {
+                    setThresholdEdited(true);
+                    setThresholdInput(Number(event.target.value));
+                  }}
+                  className="w-full accent-primary"
+                />
+                <button
+                  type="button"
+                  onClick={handleThresholdUpdate}
+                  disabled={controlBusy !== null || thresholdInput <= 0}
+                  className="mt-3 w-full rounded-btn bg-primary px-3 py-2 text-[0.8rem] font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {controlBusy === 'threshold' ? 'Updating...' : 'Apply Threshold'}
+                </button>
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                  <span>Stream Speed</span>
+                  <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text-secondary)' }}>
+                    {(1000 / streamIntervalMs).toFixed(2)} fps
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={200}
+                  max={2000}
+                  step={50}
+                  value={streamIntervalMs}
+                  onChange={(event) => setStreamIntervalMs(Number(event.target.value))}
+                  className="w-full accent-primary"
+                />
+                <button
+                  type="button"
+                  onClick={handleSpeedUpdate}
+                  disabled={controlBusy !== null}
+                  className="mt-3 w-full rounded-btn border border-[rgba(26,111,212,0.2)] bg-primary-light px-3 py-2 text-[0.8rem] font-semibold text-primary transition-colors hover:bg-[#dcecff] disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {controlBusy === 'speed' ? 'Applying...' : 'Apply Speed'}
+                </button>
+              </div>
+
+              {controlNotice ? <p style={{ fontSize: '0.8rem', color: 'var(--color-success)' }}>{controlNotice}</p> : null}
+              {controlError ? <p style={{ fontSize: '0.8rem', color: 'var(--color-danger)' }}>{controlError}</p> : null}
+            </div>
+          </article>
+
+          <article style={{ ...CARD_STYLE, padding: '20px 24px' }}>
+            <div style={SECTION_LABEL_STYLE}>Score Distribution</div>
+            <h2 style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>Histogram</h2>
+            <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>Recent anomaly score bins.</p>
+
+            <div style={{ marginTop: '12px', display: 'flex', alignItems: 'end', gap: '4px', height: '108px' }}>
+              {(scoreDistribution.length > 0
+                ? scoreDistribution
+                : new Array(8).fill(null).map((_, idx) => ({ bin: `${idx}`, count: 0 }))).map((bar, idx) => {
+                const height = Math.max(5, (bar.count / maxHistogramCount) * 100);
+                const color = idx >= 5 ? 'rgba(196,30,58,0.45)' : 'rgba(26,111,212,0.45)';
+                return (
+                  <div
+                    key={`${bar.bin}-${idx}`}
+                    style={{
+                      flex: 1,
+                      height: `${height}%`,
+                      borderTopLeftRadius: '3px',
+                      borderTopRightRadius: '3px',
+                      background: color,
+                    }}
+                  />
                 );
               })}
             </div>
-          </div>
-
-          <div className="col-span-12 rounded-xl bg-surface-container-lowest p-6 lg:col-span-9">
-            <div className="mb-6 flex items-center justify-between">
-              <h3 className="font-headline text-lg font-bold text-primary">Real-Time Threat Intelligence Log</h3>
-              <button className="text-xs font-bold uppercase tracking-widest text-secondary hover:underline" type="button" aria-label="View complete threat audit trail">
-                View Complete Audit Trail
-              </button>
+            <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+              <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono, monospace' }}>0.0</span>
+              <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono, monospace' }}>1.0+</span>
             </div>
+          </article>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-surface-container-low">
-                  <tr className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-                    <th className="px-4 py-3 first:rounded-l-lg">Time</th>
-                    <th className="px-4 py-3">Score</th>
-                    <th className="px-4 py-3">Attack Type</th>
-                    <th className="px-4 py-3">Confidence</th>
-                    <th className="px-4 py-3 last:rounded-r-lg">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-surface-container-low">
-                  {alerts.length === 0 ? (
-                    <tr>
-                      <td className="px-4 py-6 text-sm text-on-surface-variant" colSpan={5}>
-                        No anomalous sequences have been flagged in the active telemetry stream.
-                      </td>
-                    </tr>
-                  ) : (
-                    alerts.map((alert, index) => (
-                      <tr key={alert.id} className="transition-colors hover:bg-surface-container-high/20">
-                        <td className="px-4 py-4 font-mono text-xs">{alert.time}</td>
-                        <td className="px-4 py-4 font-mono text-xs font-bold text-error">{alert.score.toFixed(3)}</td>
-                        <td className="px-4 py-4">
-                          <span className="rounded bg-error-container px-2 py-1 text-[10px] font-bold text-on-error-container">
-                            {alert.attackType.toUpperCase()}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 font-mono text-xs">{(alert.confidence * 100).toFixed(1)}%</td>
-                        <td className="px-4 py-4">
-                          <span className="flex items-center gap-1.5 text-[10px] font-bold text-on-surface-variant">
-                            <span className={`h-1.5 w-1.5 rounded-full ${index === 0 ? 'bg-error' : 'bg-secondary'}`} />
-                            {index === 0 ? 'Investigating' : 'Resolved'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <article style={{ ...CARD_STYLE, padding: '20px 24px' }}>
+            <div style={SECTION_LABEL_STYLE}>System Health</div>
+            <h2 style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>Runtime status</h2>
+            <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>Connectivity and load indicator.</p>
 
-          <div className="col-span-12 flex flex-col gap-6 lg:col-span-3">
-            <div className="rounded-xl bg-surface-container-lowest p-6">
-              <h3 className="mb-4 font-headline text-sm font-bold text-primary">Operator Configuration Console</h3>
-
-              <div className="space-y-5">
-                <div>
-                  <div className="mb-2 flex items-center justify-between text-xs text-on-surface-variant">
-                    <span>Threshold</span>
-                    <span className="font-mono text-primary">{thresholdInput.toFixed(3)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0.5}
-                    max={8}
-                    step={0.01}
-                    value={thresholdInput || threshold || 0.5}
-                    onChange={(event) => {
-                      setThresholdEdited(true);
-                      setThresholdInput(Number(event.target.value));
-                    }}
-                    className="w-full accent-primary"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleThresholdUpdate}
-                    disabled={controlBusy !== null || thresholdInput <= 0}
-                    className="mt-3 w-full rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {controlBusy === 'threshold' ? 'Updating Threshold...' : 'Apply Threshold'}
-                  </button>
-                </div>
-
-                <div>
-                  <div className="mb-2 flex items-center justify-between text-xs text-on-surface-variant">
-                    <span>Sequence Analysis Speed</span>
-                    <span className="font-mono text-primary">{(1000 / streamIntervalMs).toFixed(2)} fps</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={200}
-                    max={2000}
-                    step={50}
-                    value={streamIntervalMs}
-                    onChange={(event) => setStreamIntervalMs(Number(event.target.value))}
-                    className="w-full accent-primary"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSpeedUpdate}
-                    disabled={controlBusy !== null}
-                    className="mt-3 w-full rounded-lg border border-primary/20 bg-surface px-3 py-2 text-xs font-bold text-primary transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {controlBusy === 'speed' ? 'Applying Speed...' : 'Apply Speed'}
-                  </button>
-                </div>
-
-                {controlNotice ? <p className="text-xs font-medium text-secondary">{controlNotice}</p> : null}
-                {controlError ? <p className="text-xs font-medium text-error">{controlError}</p> : null}
+            <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>WebSocket status</span>
+                <span style={{ fontSize: '0.8rem', color: connected ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 600 }}>
+                  {connected ? 'Online' : 'Offline'}
+                </span>
               </div>
-            </div>
-
-            <div className="flex-grow rounded-xl bg-surface-container-lowest p-6">
-              <h3 className="mb-4 font-headline text-sm font-bold text-primary">Anomaly Score Probability Distribution</h3>
-              <div className="flex h-32 w-full items-end gap-1">
-                {(scoreDistribution.length > 0 ? scoreDistribution : new Array(8).fill(null).map((_, idx) => ({ bin: `${idx}`, count: 0 }))).map((bar, idx) => {
-                  const height = Math.max(5, (bar.count / maxHistogramCount) * 100);
-                  const barTone = idx >= 5 ? 'bg-error/50' : 'bg-secondary/40';
-                  return <div key={`hist-${bar.bin}-${idx}`} className={`flex-grow rounded-t-sm ${barTone}`} style={{ height: `${height}%` }} />;
-                })}
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Analysis mode</span>
+                <span style={{ fontSize: '0.8rem', color: isAnalysisRunning ? 'var(--color-success)' : 'var(--color-warning)', fontWeight: 600 }}>
+                  {isAnalysisRunning ? 'Running' : 'Paused'}
+                </span>
               </div>
-              <div className="mt-2 flex justify-between font-mono text-[9px] text-on-surface-variant">
-                <span>0.0</span>
-                <span>Normal Range</span>
-                <span>1.0</span>
-              </div>
-            </div>
 
-            <div className="rounded-xl bg-primary p-6 text-on-primary">
-              <h3 className="mb-4 border-b border-white/10 pb-2 font-headline text-sm font-bold">Infrastructure Health Monitor</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs opacity-70">Backend</span>
-                  <span className={`text-xs font-bold ${connected ? 'text-tertiary-fixed' : 'text-error-container'}`}>
-                    {connected ? 'Online' : 'Offline'}
-                  </span>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>CPU Load</span>
+                  <span style={{ fontSize: '0.72rem', fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text-secondary)' }}>{cpuLoad}%</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs opacity-70">Model</span>
-                  <span className="text-xs font-bold">Loaded: v1.2.0</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs opacity-70">Device</span>
-                  <span className="text-xs font-bold">OBD-II Interface</span>
-                </div>
-                <div className="pt-2">
-                  <div className="mb-1.5 flex items-center justify-between">
-                    <span className="text-xs opacity-70">CPU Load</span>
-                    <span className="font-mono text-xs">{cpuLoad}%</span>
-                  </div>
-                  <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full bg-secondary-container" style={{ width: `${cpuLoad}%` }} />
-                  </div>
+                <div style={{ height: '6px', borderRadius: '999px', background: 'var(--color-bg-hover)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${cpuLoad}%`, background: 'var(--color-primary)' }} />
                 </div>
               </div>
             </div>
-          </div>
+          </article>
         </div>
+      </section>
 
-        <div className="mx-auto max-w-[1440px] px-8 pb-8">
-          <AdvancedAnalytics />
-        </div>
+      <div style={{ marginTop: '16px' }}>
+        <AdvancedAnalytics />
       </div>
-    </ConsoleLayout>
+    </div>
   );
 }

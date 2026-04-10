@@ -1,22 +1,107 @@
-import { useEffect, useMemo, useState } from 'react';
+// FILE: frontend/src/layout/AppLayout.tsx - BUGS FIXED: 2, 4
+import { createContext, useContext, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Activity, BarChart3, FileCheck2, HelpCircle, Menu, ShieldCheck, X } from 'lucide-react';
+import { Activity, FileCheck2, HelpCircle, Play, ShieldCheck, Square } from 'lucide-react';
 import { apiClient, type HealthResponse } from '../api/client';
+
+type AppLayoutProps = {
+  children?: ReactNode;
+};
+
+type AnalysisControlContextValue = {
+  isAnalysisRunning: boolean;
+  setIsAnalysisRunning: (next: boolean) => void;
+  toggleAnalysis: () => void;
+};
+
+const AnalysisControlContext = createContext<AnalysisControlContextValue | null>(null);
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: Activity },
-  { to: '/analyze', label: 'Analyze', icon: ShieldCheck },
+  { to: '/integration', label: 'Analyze', icon: ShieldCheck },
   { to: '/reports', label: 'Reports', icon: FileCheck2 },
-  { to: '/about', label: 'About', icon: HelpCircle },
+  { to: '/security', label: 'About', icon: HelpCircle },
 ];
 
-export function AppLayout() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+const OUTER_STYLE: CSSProperties = {
+  display: 'flex',
+  height: '100vh',
+  width: '100vw',
+  overflow: 'hidden',
+  background: 'var(--color-bg-base)',
+};
+
+const SIDEBAR_STYLE: CSSProperties = {
+  width: '220px',
+  minWidth: '220px',
+  maxWidth: '220px',
+  height: '100vh',
+  display: 'flex',
+  flexDirection: 'column',
+  flexShrink: 0,
+  background: 'var(--color-bg-sidebar)',
+  borderRight: '1px solid var(--color-border)',
+  zIndex: 10,
+  overflowY: 'auto',
+  overflowX: 'hidden',
+  boxShadow: 'var(--shadow-md)',
+};
+
+const MAIN_STYLE: CSSProperties = {
+  flex: 1,
+  height: '100vh',
+  overflowY: 'auto',
+  overflowX: 'hidden',
+  display: 'flex',
+  flexDirection: 'column',
+  minWidth: 0,
+};
+
+const OUTLET_WRAPPER_STYLE: CSSProperties = {
+  flex: 1,
+  padding: '24px',
+  maxWidth: '100%',
+  boxSizing: 'border-box',
+};
+
+function getNavLinkStyle(isActive: boolean): CSSProperties {
+  return {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '9px 12px',
+    borderRadius: '7px',
+    fontSize: '0.83rem',
+    fontWeight: isActive ? 600 : 500,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    width: '100%',
+    boxSizing: 'border-box',
+    textDecoration: 'none',
+    cursor: 'pointer',
+    color: isActive ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+    background: isActive ? 'var(--color-primary-light)' : 'transparent',
+    transition: 'all 0.15s ease',
+  };
+}
+
+export function useAnalysisControl(): AnalysisControlContextValue {
+  const context = useContext(AnalysisControlContext);
+  if (!context) {
+    throw new Error('useAnalysisControl must be used within AppLayout');
+  }
+  return context;
+}
+
+export function AppLayout({ children }: AppLayoutProps) {
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [isAnalysisRunning, setIsAnalysisRunning] = useState(true);
   const location = useLocation();
 
   useEffect(() => {
     let active = true;
+
     apiClient
       .getHealth()
       .then((data) => {
@@ -29,6 +114,7 @@ export function AppLayout() {
           setHealth(null);
         }
       });
+
     return () => {
       active = false;
     };
@@ -36,82 +122,193 @@ export function AppLayout() {
 
   const pageLabel = useMemo(() => {
     const entry = NAV_ITEMS.find((item) => location.pathname.startsWith(item.to));
-    return entry?.label ?? 'CAN-IDS';
+    return entry?.label ?? 'Dashboard';
   }, [location.pathname]);
 
+  const contextValue = useMemo(
+    () => ({
+      isAnalysisRunning,
+      setIsAnalysisRunning,
+      toggleAnalysis: () => setIsAnalysisRunning((prev) => !prev),
+    }),
+    [isAnalysisRunning]
+  );
+
+  const ToggleIcon = isAnalysisRunning ? Square : Play;
+
   return (
-    <div className="app-shell">
-      <aside className={`sidebar ${mobileOpen ? 'open' : ''}`}>
-        <div className="sidebar-header">
-          <Link to="/dashboard" className="brand-link" onClick={() => setMobileOpen(false)}>
-            <div className="brand-badge">
-              <BarChart3 size={18} />
+    <AnalysisControlContext.Provider value={contextValue}>
+      <div style={OUTER_STYLE}>
+        <aside style={SIDEBAR_STYLE}>
+          <div
+            style={{
+              height: '56px',
+              padding: '0 20px',
+              borderBottom: '1px solid var(--color-border)',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <Link
+              to="/dashboard"
+              style={{
+                textDecoration: 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                lineHeight: 1,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '1rem',
+                  fontWeight: 800,
+                  color: 'var(--color-primary)',
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                CAN·IDS
+              </span>
+              <span
+                style={{
+                  marginTop: '4px',
+                  fontSize: '0.65rem',
+                  color: 'var(--color-text-muted)',
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Intrusion Detection
+              </span>
+            </Link>
+          </div>
+
+          <div style={{ padding: '16px 12px', flexGrow: 1 }}>
+            <div
+              style={{
+                fontSize: '0.62rem',
+                fontWeight: 600,
+                color: 'var(--color-text-muted)',
+                letterSpacing: '0.1em',
+                padding: '0 8px',
+                marginBottom: '6px',
+                textTransform: 'uppercase',
+              }}
+            >
+              Navigation
             </div>
+
+            <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {NAV_ITEMS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink key={item.to} to={item.to} style={({ isActive }) => getNavLinkStyle(isActive)} className="hover:bg-bg-hover">
+                    <Icon size={16} />
+                    <span
+                      style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        flex: 1,
+                        minWidth: 0,
+                      }}
+                    >
+                      {item.label}
+                    </span>
+                  </NavLink>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div style={{ padding: '12px', borderTop: '1px solid var(--color-border)' }}>
+            <button
+              type="button"
+              onClick={contextValue.toggleAnalysis}
+              className={isAnalysisRunning ? 'hover:bg-[#ffe6ec] hover:shadow-sm' : 'hover:bg-[#e0f0ff] hover:shadow-sm'}
+              style={{
+                background: isAnalysisRunning ? 'var(--color-danger-bg)' : 'var(--color-primary-light)',
+                color: isAnalysisRunning ? 'var(--color-danger)' : 'var(--color-primary)',
+                border: isAnalysisRunning ? '1px solid rgba(196, 30, 58, 0.2)' : '1px solid rgba(26, 111, 212, 0.2)',
+                borderRadius: '8px',
+                padding: '10px 16px',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                width: '100%',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <ToggleIcon size={14} />
+              <span>{isAnalysisRunning ? 'Stop Analysis' : 'Start Analysis'}</span>
+            </button>
+
+            <div
+              style={{
+                marginTop: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '7px',
+                fontSize: '0.72rem',
+                color: 'var(--color-text-muted)',
+              }}
+            >
+              <span
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '999px',
+                  background: isAnalysisRunning ? 'var(--color-success)' : '#94a3b8',
+                }}
+              />
+              <span>{isAnalysisRunning ? 'System Online' : 'System Paused'}</span>
+            </div>
+          </div>
+        </aside>
+
+        <main style={MAIN_STYLE}>
+          <header
+            style={{
+              height: '56px',
+              borderBottom: '1px solid var(--color-border)',
+              boxShadow: 'var(--shadow-xs)',
+              background: 'var(--color-bg-card)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 20px',
+              position: 'sticky',
+              top: 0,
+              zIndex: 5,
+            }}
+          >
             <div>
-              <div className="brand-title">CAN-IDS</div>
-              <div className="brand-subtitle">Enterprise Console</div>
+              <h1
+                style={{
+                  fontSize: '1.1rem',
+                  fontWeight: 700,
+                  color: 'var(--color-text-primary)',
+                  letterSpacing: '-0.01em',
+                  lineHeight: 1.2,
+                }}
+              >
+                {pageLabel}
+              </h1>
+              <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>CAN Bus Intrusion Detection Platform</p>
             </div>
-          </Link>
-          <button className="mobile-close" onClick={() => setMobileOpen(false)} aria-label="Close menu">
-            <X size={18} />
-          </button>
-        </div>
 
-        <nav className="sidebar-nav">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }: { isActive: boolean }) => `nav-item ${isActive ? 'active' : ''}`}
-                onClick={() => setMobileOpen(false)}
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </NavLink>
-            );
-          })}
-        </nav>
+            <div style={{ display: 'flex', gap: '10px', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+              <span>Model: {health?.model ?? 'unknown'}</span>
+              <span>|</span>
+              <span>Device: {health?.device ?? 'n/a'}</span>
+            </div>
+          </header>
 
-        <div className="sidebar-footer">
-          <div className="status-pill">
-            <span className={`status-dot ${health?.status === 'online' ? 'online' : 'offline'}`} />
-            <span>{health?.status === 'online' ? 'System Online' : 'Backend Offline'}</span>
-          </div>
-        </div>
-      </aside>
-
-      <div className="main-shell">
-        <header className="topbar">
-          <button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Open menu">
-            <Menu size={20} />
-          </button>
-          <div>
-            <h1 className="page-title">{pageLabel}</h1>
-            <p className="page-subtitle">CAN Bus Intrusion Detection Platform</p>
-          </div>
-          <nav className="topbar-nav-links">
-            {NAV_ITEMS.map((item) => (
-              <NavLink
-                key={`top-${item.to}`}
-                to={item.to}
-                className={({ isActive }: { isActive: boolean }) => `topbar-link ${isActive ? 'active' : ''}`}
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-          <div className="topbar-status">
-            <span>Model: {health?.model ?? 'unknown'}</span>
-            <span>Device: {health?.device ?? 'n/a'}</span>
-          </div>
-        </header>
-
-        <main className="page-content">
-          <Outlet />
+          <div style={OUTLET_WRAPPER_STYLE}>{children ?? <Outlet />}</div>
         </main>
       </div>
-    </div>
+    </AnalysisControlContext.Provider>
   );
 }

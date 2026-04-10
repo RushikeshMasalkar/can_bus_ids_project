@@ -1,0 +1,25 @@
+{
+  "evaluation_timestamp": "2026-03-25T02:15:16.939470",
+  "threshold": 0.94524747133255,
+  "threshold_percentile": 99,
+  "confusion_matrix": {
+    "tn": 39747,
+    "fp": 402,
+    "fn": 1247,
+    "tp": 15881
+  },
+  "metrics": {
+    "accuracy": 0.9712100843270423,
+    "precision": 0.9753116747528097,
+    "recall": 0.9271952358710883,
+    "f1_score": 0.9506449971566251,
+    "specificity": 0.9899872973174924,
+    "false_positive_rate": 0.01001270268250766,
+    "false_negative_rate": 0.07280476412891172
+  },
+  "dataset_info": {
+    "total_sequences": 57277,
+    "normal_sequences": 40149,
+    "attack_sequences": 17128
+  }
+}
