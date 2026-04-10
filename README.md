@@ -442,6 +442,38 @@ This evaluates both stages end-to-end on a held-out test set and writes structur
 
 > **Assumes trained artifacts already exist** in `models/` and `data/`. If starting from raw data, follow the [Full Execution Workflow](#-full-execution-workflow) first.
 
+### New PC/Laptop: Clone-to-Run Checklist (Windows)
+
+Use this if you are running the project on another machine for the first time:
+
+```powershell
+git clone https://github.com/<your-username>/can_bus_ids_project.git
+cd can_bus_ids_project
+
+py -3 -m venv venv
+venv\Scripts\activate
+
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+
+cd frontend
+npm install
+cd ..
+
+start_backend.bat
+start_frontend.bat
+```
+
+After both scripts start, open:
+
+`http://localhost:3000`
+
+Optional backend validation:
+
+```powershell
+Invoke-RestMethod http://localhost:8000/health
+```
+
 ### Prerequisites
 
 | Requirement | Version |

@@ -7,7 +7,7 @@ Simple steps to run your CAN Bus IDS Dashboard with automatic test data.
 ### Step 1: Start Backend (Terminal 1)
 
 ```bash
-cd E:/PROJECTS/can_bus_ids_project
+cd <path-to-your-cloned-repo>/can_bus_ids_project
 python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
@@ -21,7 +21,7 @@ Wait for:
 ### Step 2: Start Frontend (Terminal 2)
 
 ```bash
-cd E:/PROJECTS/can_bus_ids_project/frontend
+cd <path-to-your-cloned-repo>/can_bus_ids_project/frontend
 npm run dev
 ```
 
