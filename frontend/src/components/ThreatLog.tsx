@@ -10,7 +10,6 @@ import {
   Clock,
   Hash,
   Gauge,
-  Shield,
 } from 'lucide-react';
 import type { ThreatLogEntry } from '../types';
 
@@ -82,7 +81,7 @@ export const ThreatLog: React.FC<ThreatLogProps> = ({ entries, onClear }) => {
         {entries.length === 0 ? (
           <div className="h-full flex items-center justify-center text-cyber-muted">
             <div className="text-center">
-              <Shield className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              
               <p>No threats detected</p>
               <p className="text-xs mt-1">System is operating normally</p>
             </div>
