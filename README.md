@@ -20,7 +20,7 @@
 
 <br>
 
-**[Overview](#-project-overview) · [Architecture](#-system-architecture--the-2-stage-pipeline) · [Tech Stack](#-tech-stack) · [Quickstart](#-quickstart) · [API Reference](#-api-reference) · [Evaluation](#-evaluation--metrics) · [Roadmap](#-roadmap)**
+**[Overview](#-project-overview) · [Architecture](#-system-architecture--the-2-stage-pipeline) · [Requirements](#-hardware--software-requirements) · [Installation](#-installation--demo-execution-guide) · [Tech Stack](#-tech-stack) · [Quickstart](#-quickstart) · [API Reference](#-api-reference) · [Evaluation](#-evaluation--metrics)**
 
 </div>
 
@@ -34,6 +34,8 @@
   - [Stage 1: Anomaly Detection via Reconstruction Loss](#stage-1-anomaly-detection-via-reconstruction-loss)
   - [Stage 2: Multiclass Attack Classification](#stage-2-multiclass-attack-classification)
   - [Pipeline Diagram](#pipeline-diagram)
+- [Hardware & Software Requirements](#-hardware--software-requirements)
+- [Installation & Demo Execution Guide](#-installation--demo-execution-guide)
 - [Tech Stack](#-tech-stack)
 - [Repository Structure](#-repository-structure)
 - [Data Pipeline](#-data-pipeline)
@@ -43,12 +45,6 @@
 - [Full Execution Workflow](#-full-execution-workflow)
 - [API Reference](#-api-reference)
 - [Frontend Dashboard](#-frontend-dashboard)
-- [Configuration](#-configuration)
-- [Artifacts & Outputs](#-artifacts--outputs)
-- [Security & Responsible Use](#-security--responsible-use)
-- [Troubleshooting](#-troubleshooting)
-- [Roadmap](#-roadmap)
-- [Contributing](#-contributing)
 - [License](#-license)
 - [Acknowledgments & Citation](#-acknowledgments--citation)
 
@@ -170,6 +166,83 @@ flowchart TD
         N --> Q[ReportsPage\nEvaluation Reports]
     end
 ```
+
+---
+
+## 💻 Hardware & Software Requirements
+
+### Hardware
+
+| Component | Minimum Requirement | Recommended for Training |
+|:----------|:--------------------|:-------------------------|
+| RAM | 8 GB | 16 GB+ |
+| CPU | 64-bit dual-core processor (Intel Core i5 / AMD Ryzen 5 class or equivalent) | 4+ cores for faster preprocessing/training |
+| Storage | 10 GB free space | 20 GB+ free space for datasets, models, and reports |
+| GPU | Not required for simulated demo inference | NVIDIA GPU with CUDA support (recommended for Stage 1 training) |
+
+The simulated demo and API inference can run on CPU-only laptops. A CUDA-capable GPU is recommended for model training speed, but it is not strictly required to run the demo.
+
+### Software
+
+| Software | Required Version | Purpose |
+|:---------|:-----------------|:--------|
+| Python | 3.10+ | Backend and ML scripts |
+| Node.js | 18+ | Frontend build and dev server |
+| npm | 9+ | Frontend dependency management |
+| Git | Any modern version (2.30+) | Clone and version control |
+| Package managers | `pip` and `npm` | Install backend/frontend dependencies |
+
+---
+
+## 🧪 Installation & Demo Execution Guide
+
+Use the following steps on a fresh PC/laptop to install and run the demo.
+
+### Step 1: Clone the repository
+
+```bash
+git clone https://github.com/<your-username>/can_bus_ids_project.git
+cd can_bus_ids_project
+```
+
+### Step 2: Backend setup (Python virtual environment + dependencies)
+
+```powershell
+py -3 -m venv venv
+
+# Windows PowerShell
+.\venv\Scripts\Activate.ps1
+
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+Optional configuration: if your model/data paths differ from defaults, create a root `.env` file and override variables such as `MODEL_PATH`, `THRESHOLD_PATH`, `VOCAB_PATH`, and `PORT`.
+
+### Step 3: Frontend setup (React + Vite)
+
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+### Step 4: Run the demo (two terminals)
+
+Terminal 1 (backend FastAPI server):
+
+```bash
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+```
+
+Terminal 2 (frontend Vite dev server):
+
+```bash
+cd frontend
+npm run dev
+```
+
+Then open `http://localhost:3000` in your browser.
 
 ---
 
@@ -786,174 +859,6 @@ The React dashboard is a single-page application with four views, all driven by 
 | `hooks/useLiveStream.ts` | Manages WebSocket connection lifecycle, automatic reconnection, and event state |
 | `layout/AppLayout.tsx` | Sidebar navigation, header, responsive layout grid |
 | `vite.config.ts` | Dev server on port 3000; reverse proxy to `localhost:8000` for API calls |
-
----
-
-## ⚙️ Configuration
-
-All runtime paths and environment settings are managed through [`backend/config.py`](backend/config.py) using `pydantic-settings`. Values are read from environment variables at startup with safe defaults pointing to standard project paths.
-
-### Environment Variables
-
-| Variable | Default | Description |
-|:---------|:--------|:------------|
-| `MODEL_PATH` | `models/best_model.pt` | Stage 1 DistilBERT checkpoint |
-| `THRESHOLD_PATH` | `models/threshold.json` | Anomaly decision boundary |
-| `VOCAB_PATH` | `data/vocab.json` | CAN ID tokenizer vocabulary |
-| `MULTICLASS_MODEL_PATH` | `models/multiclass_model.pkl` | Stage 2 RandomForest classifier |
-| `VECTORIZER_PATH` | `models/vectorizer.pkl` | Stage 2 TF-IDF vectorizer |
-| `REPORTS_DIR` | `reports/` | Directory for evaluation report assets |
-| `HOST` | `0.0.0.0` | Backend bind address |
-| `PORT` | `8000` | Backend listen port |
-
-### Frontend Environment Variables
-
-| Variable | Default | Description |
-|:---------|:--------|:------------|
-| `VITE_API_BASE_URL` | `http://localhost:8000` | Base URL for all frontend API calls and WebSocket URL derivation |
-
-Create `frontend/.env` (or `frontend/.env.local`) to override the API target:
-
-```env
-VITE_API_BASE_URL=http://localhost:8000
-```
-
-### Dev Port and CORS Notes
-
-- The frontend Vite server is configured for port `3000` in `frontend/vite.config.ts`.
-- Backend CORS allow-list should include the exact frontend origin(s) you use in development and deployment.
-- If you change frontend port, update CORS settings in `backend/main.py` accordingly.
-
-**Override defaults by creating a `.env` file in the project root:**
-
-```env
-MODEL_PATH=models/best_model.pt
-THRESHOLD_PATH=models/threshold.json
-VOCAB_PATH=data/vocab.json
-MULTICLASS_MODEL_PATH=models/multiclass_model.pkl
-VECTORIZER_PATH=models/vectorizer.pkl
-REPORTS_DIR=reports/
-```
-
----
-
-## 📦 Artifacts & Outputs
-
-| Artifact | Path | Generated By | Consumed By | Purpose |
-|:---------|:-----|:------------|:------------|:--------|
-| CAN vocabulary | `data/vocab.json` | `preprocess.py` | `dataset.py`, backend | Hex CAN ID → integer token index |
-| Sequence tensors | `data/sequences.pt` | `dataset.py` | Stage 1 training, `inference.py` | Windowed input sequences for training |
-| Stage 1 weights | `models/best_model.pt` | Stage 1 training | `inference.py`, backend | Trained DistilBERT model state dict |
-| Anomaly threshold | `models/threshold.json` | Stage 1 training | `inference.py`, backend | 99th-percentile loss decision boundary |
-| Stage 2 classifier | `models/multiclass_model.pkl` | `train_multiclass.py` | `multiclass_inference.py`, backend | Trained RandomForest model |
-| TF-IDF vectorizer | `models/vectorizer.pkl` | `train_multiclass.py` | `multiclass_inference.py`, backend | Text feature extractor for Stage 2 input |
-| Eval metrics | `reports/evaluation_metrics.json` | `evaluate.py` | Backend `/reports`, frontend Reports page | Full pipeline evaluation results |
-| Training metrics | `reports/multiclass_training_metrics.json` | `train_multiclass.py` | Frontend Reports page | Stage 2 per-class training performance |
-| Runtime report metrics | `reports/metrics.json` | `evaluate.py` | `/reports/manifest`, Reports page metric cards | Frontend-friendly metrics payload used for report rendering |
-| Evaluation charts | `reports/confusion_matrix.png`, `reports/roc_curve.png`, `reports/pr_curve.png`, `reports/score_distribution.png`, `reports/metrics_summary.png` | `evaluate.py` | Reports page via `/static/reports/*` | Visual diagnostics for model quality and threshold behavior |
-| Evaluation PDF | `reports/model_evaluation_report.pdf` | `evaluate.py` | Reports page download link | Human-readable report artifact for sharing and review |
-
----
-
-## 🔐 Security & Responsible Use
-
-> **This project is released strictly for academic research and automotive cybersecurity education.**
-
-### Responsible Use Policy
-
-- Do **not** deploy against live vehicle networks without explicit written authorization from the vehicle owner and relevant authorities
-- Do **not** use this codebase to develop or enhance offensive automotive attack tools
-- All datasets used were captured in **controlled laboratory environments** under institutional oversight — not from public roads or production vehicles in service
-
-### Data Handling
-
-- Raw CAN CSV files may contain temporal patterns that encode vehicle-specific ECU configuration — do not commit them to public repositories
-- `data/` and `models/` are `.gitignore`d by default — verify this before any public push
-- If sharing `vocab.json`, be aware it encodes information about the specific vehicle's ECU identifier space
-
-### Production Hardening Checklist
-
-Before deploying in any research or operational environment:
-
-- [ ] Run the backend behind a reverse proxy (nginx, Caddy) with TLS termination
-- [ ] Replace the default CORS wildcard (`*`) in `main.py` with explicit allowed origins
-- [ ] Restrict WebSocket and API access to trusted internal network segments or VPN
-- [ ] Add rate limiting to `/predict` and `/predict/batch` endpoints
-- [ ] Externalize all secrets and paths via environment variables — never hardcode
-- [ ] Enable structured logging with request/response audit trails
-- [ ] Configure health check monitoring with automatic restart (systemd unit, Docker healthcheck)
-- [ ] Disable debug mode and auto-reload in production uvicorn invocation
-
----
-
-## 🔧 Troubleshooting
-
-| Symptom | Likely Cause | Fix |
-|:--------|:-------------|:----|
-| Backend fails on startup — `FileNotFoundError` | `best_model.pt` or `threshold.json` missing | Verify `models/` contents; check `.env` overrides; run training pipeline if artifacts don't exist |
-| `/health` returns `model_loaded: false` | Model file exists but failed to load — PyTorch or CUDA version mismatch | Align PyTorch version with training environment; try `map_location='cpu'` in load call |
-| WebSocket disconnects immediately on connect | CORS policy blocking the frontend origin | Add `http://localhost:3000` to allowed origins list in `main.py` |
-| Stage 2 returns `null` attack type on all anomalies | `multiclass_model.pkl` or `vectorizer.pkl` missing | Run `python -m src.train_multiclass` to generate Stage 2 artifacts |
-| Frontend shows "Cannot connect to API" | Backend not running or wrong base URL in `client.ts` | Confirm backend is on port 8000; verify `vite.config.ts` proxy target |
-| Port 8000 already in use | Another process holds the port | Pass `--port 8001` to uvicorn; update `client.ts` base URL and Vite proxy accordingly |
-| CUDA out-of-memory during Stage 1 training | Batch size too large for available GPU VRAM | Reduce batch size; enable gradient accumulation steps |
-| scikit-learn `InconsistentVersionWarning` on Stage 2 load | Version mismatch between training and inference environment | Pin scikit-learn version in `requirements.txt`; retrain Stage 2 if necessary |
-| Sequences load slowly / OOM during dataset construction | `sequences.pt` too large for available RAM | Reduce sliding window stride; use chunked loading in `dataset.py` |
-| Reports page shows "Chart not available" | Report artifacts are missing or stale in `reports/` | Run `python src/evaluate.py`, then check `/reports/manifest` and `/static/reports/<chart>.png` |
-| `/predict` returns 422 validation error | Sequence is not exactly 64 CAN IDs | Send exactly 64 tokens per request window |
-| Dashboard is connected but appears static | Stream interval is high or analysis controls are paused | Check `/stream/config`, adjust interval, and ensure UI analysis state is active |
-
----
-
-## 🗺 Roadmap
-
-| Priority | Item | Status |
-|:---------|:-----|:-------|
-| 🔴 High | Finalize and document Stage 1 training script in `src/` with CLI args | In progress |
-| 🔴 High | End-to-end integration tests for all backend REST endpoints | Planned |
-| 🔴 High | Docker Compose setup for single-command deployment | Planned |
-| 🟡 Medium | ONNX export of Stage 1 for edge deployment (Jetson Nano, Raspberry Pi 5) | Planned |
-| 🟡 Medium | Online threshold recalibration from accumulated live traffic statistics | Planned |
-| 🟡 Medium | CI/CD pipeline with automated model evaluation on PR | Planned |
-| 🟢 Low | CAN FD protocol support — extend tokenizer for 64-byte payloads | Future |
-| 🟢 Low | Ensemble Stage 1 with LSTM or Autoencoder for hybrid detection | Future |
-| 🟢 Low | Live OBD-II capture integration via `python-can` / `SocketCAN` | Future |
-| 🟢 Low | Multi-vehicle vocabulary transfer learning and domain adaptation | Future |
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome from researchers, students, and automotive security practitioners.
-
-### How to Contribute
-
-**1. Fork and branch:**
-```bash
-git fork https://github.com/<your-username>/can_bus_ids_project.git
-git checkout -b feat/your-feature-name
-```
-
-**2. Implement with tests** — any change to `src/` or `backend/` should include or update corresponding tests.
-
-**3. Code standards:**
-- **Python:** Follow PEP 8; use type hints throughout `src/` and `backend/`
-- **TypeScript:** Maintain strict typing; avoid `any` unless unavoidable with a comment justifying it
-- **Commits:** Use conventional commit format — `feat:`, `fix:`, `docs:`, `refactor:`, `test:`
-
-**4. Open a Pull Request** with:
-- A concise description of what changed and why
-- Links to any relevant issues
-- Updated documentation if any endpoint, artifact path, or config variable changed
-
-### Priority Areas
-
-The following areas would have the most impact:
-
-- Training script documentation, CLI argument support, and config externalization
-- Docker and containerization for reproducible deployment
-- Additional evaluation visualizations and interactive report components
-- CAN FD protocol extension and broader dataset support
 
 ---
 

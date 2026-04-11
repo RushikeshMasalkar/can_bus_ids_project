@@ -24,6 +24,11 @@ Wait for:
 cd <path-to-your-cloned-repo>/can_bus_ids_project/frontend
 npm run dev
 ```
+# Terminal 1
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+
+# Terminal 2
+cd frontend && npm run dev
 
 **Or double-click**: `start_frontend.bat`
 
