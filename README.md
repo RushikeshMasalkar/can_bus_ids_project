@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🚗 CAN Bus Intrusion Detection System
+# CAN Bus Intrusion Detection System
 
 ### *Transformer-Based Anomaly Detection & Attack Classification for In-Vehicle Networks*
 
@@ -26,7 +26,7 @@
 
 ---
 
-## 📌 Table of Contents
+## Table of Contents
 
 - [Why This Matters](#-why-this-matters)
 - [Project Overview](#-project-overview)
@@ -50,13 +50,13 @@
 
 ---
 
-## ⚠️ Why This Matters
+## Why This Matters
 
 Modern vehicles are rolling networks. Every time you brake, accelerate, or turn the wheel, dozens of **Electronic Control Units (ECUs)** exchange thousands of messages per second over the **Controller Area Network (CAN) bus** — a protocol designed in 1986 that ships with:
 
-- ❌ No message authentication
-- ❌ No sender verification
-- ❌ No encryption of any kind
+- No message authentication
+- No sender verification
+- No encryption of any kind
 
 A single compromised ECU, a malicious OBD-II dongle, or a rogue Bluetooth module gives an attacker **unrestricted write access** to safety-critical systems including brakes, steering, throttle, and transmission. High-profile demonstrations by Miller & Valasek (Jeep Cherokee, 2015) proved this is not theoretical — they remotely disabled brakes and took control of steering at highway speed.
 
@@ -64,7 +64,7 @@ A single compromised ECU, a malicious OBD-II dongle, or a rogue Bluetooth module
 
 ---
 
-## 🧠 Project Overview
+## Project Overview
 
 This repository implements a **two-stage AI pipeline** for CAN bus intrusion detection:
 
@@ -89,7 +89,7 @@ The model **never sees attack data during training**. It learns the statistical 
 
 ---
 
-## 🏗 System Architecture — The 2-Stage Pipeline
+## System Architecture — The 2-Stage Pipeline
 
 ### Stage 1: Anomaly Detection via Reconstruction Loss
 
@@ -125,9 +125,9 @@ Stage 2 **only triggers on confirmed anomalies** — keeping inference overhead 
 
 ```mermaid
 flowchart TD
-    A[🚗 Raw CAN Traffic\nCSV Files · OBD-II Port] --> B
+    A[Raw CAN Traffic\nCSV Files · OBD-II Port] --> B
 
-    subgraph DATA["📦 Data Pipeline"]
+    subgraph DATA["Data Pipeline"]
         B[preprocess.py\nClean · Normalize · Tokenize]
         B --> C[dataset.py\nSliding Window size=64 stride=1]
         C --> D[(sequences.pt\nvocab.json)]
@@ -135,15 +135,15 @@ flowchart TD
 
     D --> E
 
-    subgraph STAGE1["🔍 Stage 1 — Anomaly Detection"]
+    subgraph STAGE1["Stage 1 — Anomaly Detection"]
         E[DistilBERT MLM\nbest_model.pt]
         E --> F{Reconstruction Loss\nvs threshold.json}
     end
 
-    F -- "loss ≤ threshold" --> G[✅ NORMAL\nNo further action]
+    F -- "loss ≤ threshold" --> G[NORMAL\nNo further action]
     F -- "loss > threshold" --> H
 
-    subgraph STAGE2["🚨 Stage 2 — Attack Classification"]
+    subgraph STAGE2["Stage 2 — Attack Classification"]
         H[Feature Extraction\nTF-IDF + Numeric Stats]
         H --> I[RandomForest Classifier\nmulticlass_model.pkl · vectorizer.pkl]
         I --> J[Attack Label\nDoS · Fuzzy · RPM · Gear]
@@ -151,7 +151,7 @@ flowchart TD
 
     G & J --> K
 
-    subgraph SERVING["⚡ Runtime — FastAPI"]
+    subgraph SERVING["Runtime — FastAPI"]
         K[backend/main.py]
         K --> L[REST Endpoints\n/predict · /predict/batch · /stats · /threshold]
         K --> M[WebSocket\n/ws/live]
@@ -159,7 +159,7 @@ flowchart TD
 
     M --> N
 
-    subgraph UI["🖥 React Dashboard"]
+    subgraph UI["React Dashboard"]
         N[useLiveStream.ts\nWebSocket Hook]
         N --> O[DashboardPage\nLive Anomaly Feed]
         N --> P[AnalyzePage\nManual Sequence Analysis]
@@ -169,7 +169,7 @@ flowchart TD
 
 ---
 
-## 💻 Hardware & Software Requirements
+## Hardware & Software Requirements
 
 ### Hardware
 
@@ -194,7 +194,7 @@ The simulated demo and API inference can run on CPU-only laptops. A CUDA-capable
 
 ---
 
-## 🧪 Installation & Demo Execution Guide
+## Installation & Demo Execution Guide
 
 Use the following steps on a fresh PC/laptop to install and run the demo.
 
@@ -246,9 +246,9 @@ Then open `http://localhost:3000` in your browser.
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
-### 🤖 Machine Learning & Data Science
+### Machine Learning & Data Science
 
 | Library | Version | Role |
 |:--------|:--------|:-----|
@@ -269,7 +269,7 @@ Then open `http://localhost:3000` in your browser.
 | **pydantic-settings** | Environment-driven path and config management in `config.py` |
 | **uvicorn** | ASGI server for production-grade async execution |
 
-### 🖥 Frontend
+### Frontend
 
 | Library | Role |
 |:--------|:-----|
@@ -348,7 +348,7 @@ can_bus_ids_project/
 
 ---
 
-## 📊 Data Pipeline
+## Data Pipeline
 
 ### 🗂️ Data Architecture & Pipeline Artifacts
 
@@ -384,7 +384,7 @@ Deep learning systems do not efficiently consume raw CSV text at training scale,
 
 ---
 
-## 🤖 Model Pipeline
+## Model Pipeline
 
 ### Stage 1 — DistilBERT MLM Training
 
@@ -447,7 +447,7 @@ python -m src.train_multiclass
 
 ---
 
-## 📈 Evaluation & Metrics
+## Evaluation & Metrics
 
 Full evaluation is run by:
 
@@ -492,7 +492,7 @@ This evaluates both stages end-to-end on a held-out test set and writes structur
 
 ---
 
-## 🚀 Quickstart
+## Quickstart
 
 > **Assumes trained artifacts already exist** in `models/` and `data/`. If starting from raw data, follow the [Full Execution Workflow](#-full-execution-workflow) first.
 
@@ -643,7 +643,7 @@ If artifacts are missing, `/health` returns HTTP `503` with a descriptive `detai
 
 ---
 
-## 🔁 Full Execution Workflow
+## Full Execution Workflow
 
 Run these steps **in order** when starting from raw data with no pre-trained artifacts.
 
@@ -720,7 +720,7 @@ cd frontend && npm run dev
 
 ---
 
-## 📡 API Reference
+## API Reference
 
 All endpoints are defined in [`backend/main.py`](backend/main.py). Base URL: `http://localhost:8000`
 
@@ -830,7 +830,7 @@ const ws = new WebSocket("ws://localhost:8000/ws/live");
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
   if (data.is_attack) {
-    console.warn(`🚨 ATTACK: ${data.attack_type} — confidence ${data.confidence}`);
+    console.warn(`ATTACK: ${data.attack_type} — confidence ${data.confidence}`);
   }
 };
 
@@ -840,7 +840,7 @@ ws.onclose = () => console.log("Stream closed");
 
 ---
 
-## 🖥 Frontend Dashboard
+## Frontend Dashboard
 
 The React dashboard is a single-page application with four views, all driven by the API client in `api/client.ts` and the live WebSocket hook in `hooks/useLiveStream.ts`.
 
@@ -862,20 +862,20 @@ The React dashboard is a single-page application with four views, all driven by 
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the **MIT License** — see [`LICENSE`](LICENSE) for full terms.
 
 ---
 
-## 📚 Acknowledgments & Citation
+## Acknowledgments & Citation
 
 ### Dataset
 
 **Car-Hacking Dataset** — Provided by the OCSLab, School of Cybersecurity, Korea University.  
 Captured via OBD-II port from a real vehicle under laboratory-controlled attack injection conditions.
 
-🔗 [https://ocslab.hksecurity.net/Datasets/car-hacking-dataset](https://ocslab.hksecurity.net/Datasets/car-hacking-dataset)
+[https://ocslab.hksecurity.net/Datasets/car-hacking-dataset](https://ocslab.hksecurity.net/Datasets/car-hacking-dataset)
 
 ### Citation
 
@@ -910,6 +910,6 @@ If you use this repository or the Car-Hacking dataset in your research, please c
 
 **Built for automotive cybersecurity research.**
 
-*If this project helped your work, consider leaving a ⭐ on GitHub.*
+*If this project helped your work, consider leaving a star on GitHub.*
 
 </div>
